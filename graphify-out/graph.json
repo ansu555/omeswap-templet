@@ -141,9 +141,9 @@
       "label": "PoolPage() Component",
       "file_type": "tsx_component",
       "source_file": "app/(app)/pool/[id]/page.tsx",
-      "id": "pool_page_component",
       "community": 117,
-      "norm_label": "poolpage() component"
+      "norm_label": "poolpage() component",
+      "id": "pool_page_component"
     },
     {
       "label": "app/(app)/portfolio/page.tsx",
@@ -188,9 +188,9 @@
       "label": "app/(app)/trade/page.tsx",
       "file_type": "route_page",
       "source_file": "app/(app)/trade/page.tsx",
-      "id": "trade_page_route",
       "community": 121,
-      "norm_label": "app/(app)/trade/page.tsx"
+      "norm_label": "app/(app)/trade/page.tsx",
+      "id": "trade_page_route"
     },
     {
       "label": "page.tsx",
@@ -6045,8 +6045,8 @@
       "source_file": "app/api/agent-builder/chat/route.ts",
       "source_location": "both agent-builder POST handlers",
       "weight": 0.86,
-      "_src": "chat_route_post",
-      "_tgt": "agent_route_post",
+      "_src": "agent_route_post",
+      "_tgt": "chat_route_post",
       "source": "agent_route_post",
       "target": "chat_route_post"
     },
@@ -6357,8 +6357,8 @@
       "source_file": "app/api/crypto/route.ts",
       "source_location": "both normalize market-provider payloads to TokenRow",
       "weight": 0.81,
-      "_src": "crypto_transform_cmc_data",
-      "_tgt": "crypto_transform_coingecko_data",
+      "_src": "crypto_transform_coingecko_data",
+      "_tgt": "crypto_transform_cmc_data",
       "source": "crypto_transform_coingecko_data",
       "target": "crypto_transform_cmc_data"
     },
@@ -7473,8 +7473,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/avax-agent/lib/nodes/registry.ts",
       "source_location": "L77",
       "weight": 1.0,
-      "_src": "registry_createnodeinstance",
-      "_tgt": "basenode_init",
+      "_src": "basenode_init",
+      "_tgt": "registry_createnodeinstance",
       "source": "basenode_init",
       "target": "registry_createnodeinstance"
     },
@@ -7497,8 +7497,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/avax-agent/store/useStore.ts",
       "source_location": "L150",
       "weight": 1.0,
-      "_src": "usestore_loadfromsession",
-      "_tgt": "basenode_setconfig",
+      "_src": "basenode_setconfig",
+      "_tgt": "usestore_loadfromsession",
       "source": "basenode_setconfig",
       "target": "usestore_loadfromsession"
     },
@@ -7509,8 +7509,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/store/agent-builder.ts",
       "source_location": "L196",
       "weight": 1.0,
-      "_src": "agent_builder_loadfromsession",
-      "_tgt": "basenode_setconfig",
+      "_src": "basenode_setconfig",
+      "_tgt": "agent_builder_loadfromsession",
       "source": "basenode_setconfig",
       "target": "agent_builder_loadfromsession"
     },
@@ -7581,8 +7581,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/avax-agent/store/useStore.ts",
       "source_location": "L149",
       "weight": 1.0,
-      "_src": "usestore_loadfromsession",
-      "_tgt": "registry_createnodeinstance",
+      "_src": "registry_createnodeinstance",
+      "_tgt": "usestore_loadfromsession",
       "source": "registry_createnodeinstance",
       "target": "usestore_loadfromsession"
     },
@@ -7593,8 +7593,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/store/agent-builder.ts",
       "source_location": "L195",
       "weight": 1.0,
-      "_src": "agent_builder_loadfromsession",
-      "_tgt": "registry_createnodeinstance",
+      "_src": "registry_createnodeinstance",
+      "_tgt": "agent_builder_loadfromsession",
       "source": "registry_createnodeinstance",
       "target": "agent_builder_loadfromsession"
     },
@@ -8661,8 +8661,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/lib/utils.ts",
       "source_location": "L5",
       "weight": 1.0,
-      "_src": "utils_cn",
-      "_tgt": "basenodecomponent_clsx",
+      "_src": "basenodecomponent_clsx",
+      "_tgt": "utils_cn",
       "source": "basenodecomponent_clsx",
       "target": "utils_cn"
     },
@@ -9309,8 +9309,8 @@
       "source_file": "components/trade/SwapCardDex.tsx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "swapcarddex_component",
-      "_tgt": "addliquiditycard_component",
+      "_src": "addliquiditycard_component",
+      "_tgt": "swapcarddex_component",
       "source": "addliquiditycard_component",
       "target": "swapcarddex_component"
     },
@@ -9393,8 +9393,8 @@
       "source_file": "components/trade/AddLiquidityCard.tsx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "trade_user_balance_constraints",
-      "_tgt": "addliquiditycard_approval_and_add_flow",
+      "_src": "addliquiditycard_approval_and_add_flow",
+      "_tgt": "trade_user_balance_constraints",
       "source": "addliquiditycard_approval_and_add_flow",
       "target": "trade_user_balance_constraints"
     },
@@ -11337,8 +11337,8 @@
       "source_file": "lib/agent-builder/nodes/data/DEXPriceNode.ts",
       "source_location": null,
       "weight": 1.0,
-      "_src": "dexpricenode_execute",
-      "_tgt": "limitordernode_execute",
+      "_src": "limitordernode_execute",
+      "_tgt": "dexpricenode_execute",
       "source": "limitordernode_execute",
       "target": "dexpricenode_execute"
     },
@@ -11397,8 +11397,8 @@
       "source_file": "lib/chain-registry/index.ts",
       "source_location": null,
       "weight": 1.0,
-      "_src": "chain_registry_single_source_design",
-      "_tgt": "swapnode_class",
+      "_src": "swapnode_class",
+      "_tgt": "chain_registry_single_source_design",
       "source": "swapnode_class",
       "target": "chain_registry_single_source_design"
     },
@@ -11433,8 +11433,8 @@
       "source_file": "lib/agent-builder/nodes/data/DEXPriceNode.ts",
       "source_location": null,
       "weight": 1.0,
-      "_src": "dexpricenode_execute",
-      "_tgt": "swapnode_execute",
+      "_src": "swapnode_execute",
+      "_tgt": "dexpricenode_execute",
       "source": "swapnode_execute",
       "target": "dexpricenode_execute"
     },
@@ -11553,8 +11553,8 @@
       "source_file": "lib/chain-registry/index.ts",
       "source_location": null,
       "weight": 1.0,
-      "_src": "chain_registry_single_source_design",
-      "_tgt": "walletbalancenode_class",
+      "_src": "walletbalancenode_class",
+      "_tgt": "chain_registry_single_source_design",
       "source": "walletbalancenode_class",
       "target": "chain_registry_single_source_design"
     },

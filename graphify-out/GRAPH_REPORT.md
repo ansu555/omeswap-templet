@@ -1,7 +1,7 @@
 # Graph Report - /home/anik2003/Documents/omeswap  (2026-04-19)
 
 ## Corpus Check
-- 266 files · ~421,513 words
+- 266 files · ~458,389 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -255,8 +255,8 @@
   lib/agent-builder/evm-provider.ts → lib/chain-registry/chains/avalanche.ts
 - `AVALANCHE_CHAIN_ID constant` --conceptually_related_to--> `avalancheConfig`  [AMBIGUOUS]
   lib/agent-builder/avalanche/provider.ts → lib/chain-registry/chains/avalanche.ts
-- `POST (agent builder chat route)` --semantically_similar_to--> `POST (agent builder agent route)`  [INFERRED] [semantically similar]
-  app/api/agent-builder/chat/route.ts → app/api/agent-builder/agent/route.ts
+- `POST (agent builder agent route)` --semantically_similar_to--> `POST (agent builder chat route)`  [INFERRED] [semantically similar]
+  app/api/agent-builder/agent/route.ts → app/api/agent-builder/chat/route.ts
 
 ## Hyperedges (group relationships)
 - **DEX Trading Flow: Page → Hooks → Smart Contracts** — 10_app_shell_report_tradepage, 12_trade_report_swapcarddex, 01_implementation_summary_use_dex_swap, 00_root_readme_multihopswaprouter, 00_root_readme_avalanche_mainnet [INFERRED 0.85]
