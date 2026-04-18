@@ -1,7 +1,7 @@
 # Graph Report - /home/anik2003/Documents/omeswap  (2026-04-19)
 
 ## Corpus Check
-- 266 files · ~458,389 words
+- 266 files · ~456,553 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
