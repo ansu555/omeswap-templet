@@ -1,3 +1,4 @@
+export { useWallet } from './use-wallet';
 export { useAvalancheWallet } from './use-avalanche-wallet';
 export { useIsMobile } from './use-mobile';
 export { useWalletAnalysis } from './use-wallet-analysis';

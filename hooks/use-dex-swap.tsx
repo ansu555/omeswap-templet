@@ -7,16 +7,26 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
+  useChainId,
 } from "wagmi";
 import { parseEther, formatEther, Address } from "viem";
-import { CONTRACT_ADDRESSES, TOKENS } from "@/contracts/config";
+import { TOKENS } from "@/contracts/config";
 import { MultiTokenLiquidityPoolsABI, ERC20ABI } from "@/contracts/abis";
-import { avalanche } from "@/lib/chains/avalanche";
+import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 import { useTransactionStore } from "@/store/transaction-store";
 
 export function useDexSwap() {
   const { address } = useAccount();
-  const publicClient = usePublicClient({ chainId: avalanche.id });
+  const connectedChainId = useChainId();
+
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+  const poolsAddress = (chainConfig.omeswapPools ?? '0x0000000000000000000000000000000000000000') as Address;
+
+  const publicClient = usePublicClient({ chainId });
   const [tokenIn, setTokenIn] = useState<string>("WAVAX");
   const [tokenOut, setTokenOut] = useState<string>("USDC");
   const [amountIn, setAmountIn] = useState<string>("");
@@ -65,19 +75,19 @@ export function useDexSwap() {
       : tokenInAddr;
 
   const { data: poolId } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: "getPoolId",
     args: [token0Addr, token1Addr],
-    chainId: avalanche.id,
+    chainId,
   });
 
   const { data: poolInfo } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: "getPoolInfo",
     args: [poolId as bigint],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: poolId !== undefined,
     },
@@ -122,7 +132,7 @@ export function useDexSwap() {
 
         // Calculate output using getAmountOut from Pools contract
         const amountOut = (await publicClient.readContract({
-          address: CONTRACT_ADDRESSES.POOLS as Address,
+          address: poolsAddress,
           abi: MultiTokenLiquidityPoolsABI,
           functionName: "getAmountOut",
           args: [parseEther(amountIn), reserveIn, reserveOut],
@@ -167,8 +177,8 @@ export function useDexSwap() {
     address: TOKENS[tokenIn].address as Address,
     abi: ERC20ABI,
     functionName: "allowance",
-    args: [address as Address, CONTRACT_ADDRESSES.POOLS as Address],
-    chainId: avalanche.id,
+    args: [address as Address, poolsAddress],
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -180,7 +190,7 @@ export function useDexSwap() {
     abi: ERC20ABI,
     functionName: "balanceOf",
     args: [address as Address],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -224,7 +234,7 @@ export function useDexSwap() {
             (outputBigInt * BigInt(10000 - slippage * 100)) / BigInt(10000);
 
           writeSwap({
-            address: CONTRACT_ADDRESSES.POOLS as Address,
+            address: poolsAddress,
             abi: MultiTokenLiquidityPoolsABI,
             functionName: "swap",
             args: [
@@ -233,7 +243,7 @@ export function useDexSwap() {
               parseEther(amountIn),
               minAmountOut,
             ],
-            chainId: avalanche.id,
+            chainId,
           });
         } else {
           console.log("Swap conditions not met after approval:", {
@@ -303,8 +313,8 @@ export function useDexSwap() {
           address: TOKENS[tokenIn].address as Address,
           abi: ERC20ABI,
           functionName: "approve",
-          args: [CONTRACT_ADDRESSES.POOLS as Address, parseEther(amountIn)],
-          chainId: avalanche.id,
+          args: [poolsAddress, parseEther(amountIn)],
+          chainId,
         });
       } else {
         console.log("No approval needed, executing swap directly...");
@@ -321,7 +331,7 @@ export function useDexSwap() {
         });
 
         writeSwap({
-          address: CONTRACT_ADDRESSES.POOLS as Address,
+          address: poolsAddress,
           abi: MultiTokenLiquidityPoolsABI,
           functionName: "swap",
           args: [
@@ -330,7 +340,7 @@ export function useDexSwap() {
             parseEther(amountIn),
             minAmountOut,
           ],
-          chainId: avalanche.id,
+          chainId,
         });
       }
     } catch (error: any) {

@@ -1,19 +1,29 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
   useReadContract,
+  useChainId,
 } from "wagmi";
 import { parseEther, formatEther, Address } from "viem";
 import { TOKENS } from "@/contracts/config";
 import { ERC20ABI } from "@/contracts/abis";
-import { avalanche } from "@/lib/chains/avalanche";
+import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 import { useTransactionStore } from "@/store/transaction-store";
 
 export function useTokenMint(tokenSymbol: string) {
   const { address } = useAccount();
+  const connectedChainId = useChainId();
+
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+
   const token = TOKENS[tokenSymbol];
 
   const {
@@ -31,7 +41,7 @@ export function useTokenMint(tokenSymbol: string) {
     abi: ERC20ABI,
     functionName: "balanceOf",
     args: [address as Address],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -48,7 +58,7 @@ export function useTokenMint(tokenSymbol: string) {
       abi: ERC20ABI,
       functionName: "mint",
       args: [address, parseEther(amount)],
-      chainId: avalanche.id,
+      chainId,
     });
   };
 
@@ -83,6 +93,14 @@ export function useTokenMint(tokenSymbol: string) {
 // Hook to mint all tokens at once
 export function useBatchMint() {
   const { address } = useAccount();
+  const connectedChainId = useChainId();
+
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+
   const {
     writeContract,
     data: hash,
@@ -102,7 +120,7 @@ export function useBatchMint() {
       abi: ERC20ABI,
       functionName: "mint",
       args: [address, parseEther(amount)],
-      chainId: avalanche.id,
+      chainId,
     });
   };
 

@@ -1,6 +1,7 @@
 import { BaseNode } from '../BaseNode'
 import type { HandleDef, ConfigField, ExecutionContext } from '@/types'
 import { ethers } from 'ethers'
+import { getChainConfig, getDefaultChainId } from '../../../../lib/chain-registry'
 
 const ROUTER_ABI = [
   'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)',
@@ -9,33 +10,22 @@ const ROUTER_ABI = [
   'function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)',
 ]
 
-// AVAX = native coin sentinel — not a real ERC-20, triggers payable swap
-const NATIVE_AVAX = 'AVAX'
-
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
 ]
 
-const WAVAX_ADDRESS = '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7'
-
-const TOKEN_ADDRESSES: Record<string, { address: string; decimals: number }> = {
-  WAVAX: { address: WAVAX_ADDRESS, decimals: 18 },
-  'USDC.e': { address: '0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664', decimals: 6 },
-  'USDT.e': { address: '0xc7198437980c041c805A1EDcbA50c1Ce5db95118', decimals: 6 },
-  JOE: { address: '0x6e84a6216eA6daCC71eE8E6b0a5B7322EEbC0fDd', decimals: 18 },
-  PNG: { address: '0x60781C2586D68229fde47564546784ab3fACA982', decimals: 18 },
-}
-
-const DEX_ROUTERS: Record<string, string> = {
-  'Trader Joe': '0x60aE616a2155Ee3d9A68541Ba4544862310933d4',
-  Pangolin: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106',
-}
+// Resolved once at module load from the chain registry
+const _config = getChainConfig(getDefaultChainId())
+const _nativeSymbol = _config.chain.nativeCurrency.symbol
+const _v1Routers = _config.dexRouters.filter((r) => r.type === 'uniswapV2')
+const _dexNames = _v1Routers.map((r) => r.name)
+const _tokenSymbols = Object.keys(_config.tokens)
 
 export class SwapNode extends BaseNode {
   readonly type = 'swap'
   readonly label = 'Swap'
-  readonly description = 'Executes a token swap on Trader Joe or Pangolin'
+  readonly description = `Executes a token swap on ${_dexNames.join(' or ')}`
   readonly icon = 'Repeat2'
   readonly category = 'action' as const
   readonly color = 'border-green-500'
@@ -51,22 +41,22 @@ export class SwapNode extends BaseNode {
       key: 'dex',
       label: 'DEX',
       type: 'select',
-      options: ['Trader Joe', 'Pangolin'],
-      default: 'Trader Joe',
+      options: _dexNames,
+      default: _dexNames[0],
     },
     {
       key: 'tokenIn',
       label: 'Token In',
       type: 'select',
-      // AVAX = native coin (uses swapExactAVAXForTokens, no approval needed)
-      options: [NATIVE_AVAX, ...Object.keys(TOKEN_ADDRESSES)],
-      default: NATIVE_AVAX,
+      // native coin uses swapExactAVAXForTokens, no approval needed
+      options: [_nativeSymbol, ..._tokenSymbols],
+      default: _nativeSymbol,
     },
     {
       key: 'tokenOut',
       label: 'Token Out',
       type: 'select',
-      options: Object.keys(TOKEN_ADDRESSES),
+      options: _tokenSymbols,
       default: 'USDC.e',
     },
     {
@@ -90,14 +80,17 @@ export class SwapNode extends BaseNode {
     if (!inputs.signal) return { txHash: null }
     if (!context.signer || !context.walletAddress) throw new Error('Wallet not connected')
 
-    const dex = (this.config.dex as string) || 'Trader Joe'
-    const tokenIn = (this.config.tokenIn as string) || NATIVE_AVAX
+    const dex = (this.config.dex as string) || _dexNames[0]
+    const tokenIn = (this.config.tokenIn as string) || _nativeSymbol
     const tokenOut = (this.config.tokenOut as string) || 'USDC.e'
     const amountIn = (this.config.amountIn as number) || 0.1
     const slippage = (this.config.slippage as number) || 0.5
 
-    const routerAddress = DEX_ROUTERS[dex]
-    const outToken = TOKEN_ADDRESSES[tokenOut]
+    const routerEntry = _v1Routers.find((r) => r.name === dex)
+    if (!routerEntry) throw new Error(`Unknown DEX: ${dex}`)
+    const routerAddress = routerEntry.routerAddress
+
+    const outToken = _config.tokens[tokenOut]
     if (!outToken) throw new Error(`Unknown token out: ${tokenOut}`)
 
     const signer = context.signer as ethers.Signer
@@ -109,10 +102,10 @@ export class SwapNode extends BaseNode {
 
     let tx
 
-    // ── Path A: native AVAX → ERC-20 (swapExactAVAXForTokens) ──────────────
-    if (tokenIn === NATIVE_AVAX) {
+    // ── Path A: native coin → ERC-20 (swapExactAVAXForTokens) ──────────────
+    if (tokenIn === _nativeSymbol) {
       const amountInWei = ethers.parseEther(amountIn.toString())
-      const path = [WAVAX_ADDRESS, outToken.address]
+      const path = [_config.nativeWrapped, outToken.address]
       const amounts = await router.getAmountsOut(amountInWei, path)
       const amountOutMin = (amounts[1] * slippageBps) / BigInt(10000)
 
@@ -126,7 +119,7 @@ export class SwapNode extends BaseNode {
 
     // ── Path B: ERC-20 → ERC-20 (swapExactTokensForTokens) ─────────────────
     } else {
-      const inToken = TOKEN_ADDRESSES[tokenIn]
+      const inToken = _config.tokens[tokenIn]
       if (!inToken) throw new Error(`Unknown token in: ${tokenIn}`)
 
       const amountInWei = ethers.parseUnits(amountIn.toString(), inToken.decimals)

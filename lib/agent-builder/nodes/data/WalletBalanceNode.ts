@@ -1,12 +1,18 @@
 import { BaseNode } from '../BaseNode'
 import type { HandleDef, ConfigField, ExecutionContext } from '@/types/agent-builder-canvas'
 import { ethers } from 'ethers'
+import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry'
 
 const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
   'function symbol() view returns (string)',
 ]
+
+// Resolved once at module load from the chain registry
+const _config = getChainConfig(getDefaultChainId())
+const _nativeSymbol = _config.chain.nativeCurrency.symbol
+const _tokenSymbols = Object.keys(_config.tokens)
 
 export class WalletBalanceNode extends BaseNode {
   readonly type = 'wallet_balance'
@@ -26,8 +32,8 @@ export class WalletBalanceNode extends BaseNode {
       key: 'token',
       label: 'Token',
       type: 'select',
-      options: ['AVAX', 'WAVAX', 'USDC.e', 'USDT.e', 'JOE', 'PNG'],
-      default: 'AVAX',
+      options: [_nativeSymbol, ..._tokenSymbols],
+      default: _nativeSymbol,
     },
   ]
 
@@ -39,31 +45,23 @@ export class WalletBalanceNode extends BaseNode {
       throw new Error('Wallet not connected')
     }
 
-    const token = (this.config.token as string) || 'AVAX'
+    const token = (this.config.token as string) || _nativeSymbol
     context.addLog(`[WalletBalance] Checking ${token} balance...`)
 
     const provider = context.provider as ethers.BrowserProvider
 
-    if (token === 'AVAX') {
+    if (token === _nativeSymbol) {
       const raw = await provider.getBalance(context.walletAddress)
       const balance = parseFloat(ethers.formatEther(raw))
-      context.addLog(`[WalletBalance] AVAX balance: ${balance}`)
+      context.addLog(`[WalletBalance] ${_nativeSymbol} balance: ${balance}`)
       return { balance }
     }
 
     // ERC-20 token
-    const TOKEN_ADDRESSES: Record<string, string> = {
-      WAVAX: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
-      'USDC.e': '0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664',
-      'USDT.e': '0xc7198437980c041c805A1EDcbA50c1Ce5db95118',
-      JOE: '0x6e84a6216eA6daCC71eE8E6b0a5B7322EEbC0fDd',
-      PNG: '0x60781C2586D68229fde47564546784ab3fACA982',
-    }
+    const tokenInfo = _config.tokens[token]
+    if (!tokenInfo) throw new Error(`Unknown token: ${token}`)
 
-    const address = TOKEN_ADDRESSES[token]
-    if (!address) throw new Error(`Unknown token: ${token}`)
-
-    const contract = new ethers.Contract(address, ERC20_ABI, provider)
+    const contract = new ethers.Contract(tokenInfo.address, ERC20_ABI, provider)
     const [raw, decimals] = await Promise.all([
       contract.balanceOf(context.walletAddress),
       contract.decimals(),

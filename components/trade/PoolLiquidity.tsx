@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useReadContract } from "wagmi";
 import { CONTRACT_ADDRESSES, TOKENS } from "@/contracts/config";
 import { MultiTokenLiquidityPoolsABI } from "@/contracts/abis";
-import { avalanche } from '@/lib/chains/avalanche';
+import { getDefaultChainId } from '@/lib/chain-registry';
 import { formatEther, Address } from "viem";
 
 export function PoolLiquidity() {
@@ -15,7 +15,7 @@ export function PoolLiquidity() {
     abi: MultiTokenLiquidityPoolsABI,
     functionName: 'getPoolId',
     args: [TOKENS.USDC.address as Address, TOKENS.USDTe.address as Address],
-    chainId: avalanche.id,
+    chainId: getDefaultChainId(),
   });
 
   const { data: poolInfo } = useReadContract({
@@ -23,7 +23,7 @@ export function PoolLiquidity() {
     abi: MultiTokenLiquidityPoolsABI,
     functionName: 'getPoolInfo',
     args: [poolId as bigint],
-    chainId: avalanche.id,
+    chainId: getDefaultChainId(),
     query: {
       enabled: !!poolId,
     },

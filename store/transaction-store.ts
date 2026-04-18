@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { useEffect } from "react";
+import { getExplorerLink, getDefaultChainId } from "@/lib/chain-registry";
 
 const STORAGE_KEY = "omeswap-transactions";
 
@@ -75,7 +76,7 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
       const newTx: StoredTransaction = {
         ...tx,
         id: crypto.randomUUID(),
-        explorerUrl: `https://snowtrace.io/tx/${tx.txHash}`,
+        explorerUrl: getExplorerLink(getDefaultChainId(), 'tx', tx.txHash),
       };
       const updated = [newTx, ...state.transactions];
       persist(updated);

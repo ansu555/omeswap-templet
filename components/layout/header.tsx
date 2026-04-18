@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Logo } from "./logo";
 import { Compass, ArrowLeftRight, Wallet, Receipt, Bot } from "lucide-react";
 import { gsap } from "gsap";
-import { AvalancheWalletConnect } from "@/components/features/avalanche";
+import { WalletConnect } from "@/components/features/wallet";
 import { NavBar } from "@/components/ui/nav-bar";
 
 const navItems = [
@@ -52,7 +52,7 @@ export const Header = () => {
 
           {/* Right Section - Connect Wallet */}
           <div className="hidden md:flex items-center">
-            <AvalancheWalletConnect />
+            <WalletConnect />
           </div>
 
           {/* Mobile Menu Button */}

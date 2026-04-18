@@ -4,10 +4,10 @@ import { useState } from "react";
 import { ArrowUpDown, ChevronDown, Settings, Check, Wallet, Search, ExternalLink, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDexAggregator, DexSource } from "@/hooks/use-dex-aggregator";
-import { useAvalancheWallet } from "@/hooks/use-avalanche-wallet";
+import { useWallet } from "@/hooks/use-wallet";
 import { TOKEN_LIST, TOKEN_ADDRESSES } from "@/contracts/config";
 import { useTokenBalances } from "@/hooks/use-token-balances";
-import AvalancheWalletConnect from "@/components/features/avalanche/avalanche-wallet-connect";
+import WalletConnect from "@/components/features/wallet/wallet-connect";
 import {
   Dialog,
   DialogContent,
@@ -19,18 +19,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { avalanche } from '@/lib/chains/avalanche';
+import { getExplorerLink, getDexRouters, getDefaultChainId } from '@/lib/chain-registry';
 
 type SwapMode = "swap" | "limit" | "buy" | "sell";
 
-const DEX_LABELS: Record<DexSource, { name: string; color: string }> = {
-  traderjoe_v2: { name: 'Trader Joe', color: 'text-orange-400' },
-  traderjoe: { name: 'Trader Joe V1', color: 'text-orange-300' },
-  pangolin: { name: 'Pangolin', color: 'text-pink-400' },
+const DEX_LABEL_COLORS: Record<string, string> = {
+  traderjoe_v2: 'text-orange-400',
+  traderjoe: 'text-orange-300',
+  pangolin: 'text-pink-400',
 };
 
+const DEX_LABELS: Record<string, { name: string; color: string }> =
+  Object.fromEntries(
+    getDexRouters(getDefaultChainId()).map(r => [
+      r.id,
+      { name: r.name, color: DEX_LABEL_COLORS[r.id] ?? 'text-blue-400' },
+    ])
+  );
+
 export function SwapCardDex() {
-  const { isConnected, chain, address } = useAvalancheWallet();
+  const { isConnected, chain, address } = useWallet();
 
   const [mode, setMode] = useState<SwapMode>("swap");
   const [tokenIn, setTokenIn] = useState<string>('WAVAX');
@@ -85,7 +93,7 @@ export function SwapCardDex() {
   const hasSufficientBalance = parseFloat(balance) >= parseFloat(amountIn || '0');
   const hasQuote = quotes.length > 0 && parseFloat(estimatedOutput) > 0;
   const isValidSwap = hasValidAmount && hasSufficientBalance && hasQuote;
-  const isWrongNetwork = isConnected && chain?.id !== avalanche.id;
+  const isWrongNetwork = isConnected && chain?.id !== getDefaultChainId();
 
   const TokenIcon = ({ symbol }: { symbol: string }) => (
     <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
@@ -162,7 +170,7 @@ export function SwapCardDex() {
         <p className="text-muted-foreground mb-6">
           Connect your wallet to swap tokens on Avalanche
         </p>
-        <AvalancheWalletConnect variant="default" />
+        <WalletConnect variant="default" />
       </div>
     );
   }
@@ -176,7 +184,7 @@ export function SwapCardDex() {
         </p>
         <div className="text-sm text-muted-foreground">
           Current: {chain?.name} (ID: {chain?.id})<br />
-          Required: Avalanche Mainnet (ID: {avalanche.id})
+          Required: Chain ID: {getDefaultChainId()}
         </div>
       </div>
     );
@@ -400,7 +408,7 @@ export function SwapCardDex() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-success font-medium">Swap Successful!</span>
               <a
-                href={`https://snowtrace.io/tx/${hash}`}
+                href={getExplorerLink(chain?.id ?? getDefaultChainId(), 'tx', hash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-primary hover:underline flex items-center gap-1"

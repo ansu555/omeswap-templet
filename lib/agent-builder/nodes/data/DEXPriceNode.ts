@@ -1,28 +1,22 @@
 import { BaseNode } from '../BaseNode'
 import type { HandleDef, ConfigField, ExecutionContext } from '@/types/agent-builder-canvas'
 import { ethers } from 'ethers'
+import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry'
 
 const ROUTER_ABI = [
   'function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)',
 ]
 
-const TOKEN_ADDRESSES: Record<string, { address: string; decimals: number }> = {
-  WAVAX: { address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7', decimals: 18 },
-  'USDC.e': { address: '0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664', decimals: 6 },
-  'USDT.e': { address: '0xc7198437980c041c805A1EDcbA50c1Ce5db95118', decimals: 6 },
-  JOE: { address: '0x6e84a6216eA6daCC71eE8E6b0a5B7322EEbC0fDd', decimals: 18 },
-  PNG: { address: '0x60781C2586D68229fde47564546784ab3fACA982', decimals: 18 },
-}
-
-const DEX_ROUTERS: Record<string, string> = {
-  'Trader Joe': '0x60aE616a2155Ee3d9A68541Ba4544862310933d4',
-  Pangolin: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106',
-}
+// Resolved once at module load from the chain registry
+const _config = getChainConfig(getDefaultChainId())
+const _v1Routers = _config.dexRouters.filter((r) => r.type === 'uniswapV2')
+const _dexNames = _v1Routers.map((r) => r.name)
+const _tokenSymbols = Object.keys(_config.tokens)
 
 export class DEXPriceNode extends BaseNode {
   readonly type = 'dex_price'
   readonly label = 'DEX Price'
-  readonly description = 'Gets swap quote from Trader Joe or Pangolin'
+  readonly description = `Gets swap quote from ${_dexNames.join(' or ')}`
   readonly icon = 'ArrowLeftRight'
   readonly category = 'data' as const
   readonly color = 'border-blue-500'
@@ -37,21 +31,21 @@ export class DEXPriceNode extends BaseNode {
       key: 'dex',
       label: 'DEX',
       type: 'select',
-      options: ['Trader Joe', 'Pangolin'],
-      default: 'Trader Joe',
+      options: _dexNames,
+      default: _dexNames[0],
     },
     {
       key: 'tokenIn',
       label: 'Token In',
       type: 'select',
-      options: Object.keys(TOKEN_ADDRESSES),
+      options: _tokenSymbols,
       default: 'WAVAX',
     },
     {
       key: 'tokenOut',
       label: 'Token Out',
       type: 'select',
-      options: Object.keys(TOKEN_ADDRESSES),
+      options: _tokenSymbols,
       default: 'USDC.e',
     },
     {
@@ -66,14 +60,17 @@ export class DEXPriceNode extends BaseNode {
     _inputs: Record<string, unknown>,
     context: ExecutionContext
   ): Promise<Record<string, unknown>> {
-    const dex = (this.config.dex as string) || 'Trader Joe'
+    const dex = (this.config.dex as string) || _dexNames[0]
     const tokenIn = (this.config.tokenIn as string) || 'WAVAX'
     const tokenOut = (this.config.tokenOut as string) || 'USDC.e'
     const amountIn = (this.config.amountIn as number) || 1
 
-    const routerAddress = DEX_ROUTERS[dex]
-    const inToken = TOKEN_ADDRESSES[tokenIn]
-    const outToken = TOKEN_ADDRESSES[tokenOut]
+    const routerEntry = _v1Routers.find((r) => r.name === dex)
+    if (!routerEntry) throw new Error(`Unknown DEX: ${dex}`)
+    const routerAddress = routerEntry.routerAddress
+
+    const inToken = _config.tokens[tokenIn]
+    const outToken = _config.tokens[tokenOut]
 
     if (!inToken || !outToken) throw new Error('Unknown token')
 

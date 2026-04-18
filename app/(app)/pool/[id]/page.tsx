@@ -8,8 +8,8 @@ import { useReadContract } from "wagmi";
 import { formatEther, Address } from "viem";
 import { CONTRACT_ADDRESSES, TOKENS } from "@/contracts/config";
 import { MultiTokenLiquidityPoolsABI } from "@/contracts/abis";
-import { avalanche } from '@/lib/chains/avalanche';
-import { useAvalancheWallet } from "@/hooks/use-avalanche-wallet";
+import { getExplorerLink, getDefaultChainId } from '@/lib/chain-registry';
+import { useWallet } from "@/hooks/use-wallet";
 import { usePoolDetails } from "@/hooks/use-pool-details";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,7 @@ export default function PoolPage() {
   const params = useParams();
   const poolId = Number(params.id);
   const router = useRouter();
-  const { address, isConnected } = useAvalancheWallet();
+  const { address, isConnected } = useWallet();
   const [timeRange, setTimeRange] = useState("1D");
   const [showSwap, setShowSwap] = useState(false);
 
@@ -63,7 +63,7 @@ export default function PoolPage() {
     abi: MultiTokenLiquidityPoolsABI,
     functionName: 'getUserPosition',
     args: [BigInt(poolId), address as Address],
-    chainId: avalanche.id,
+    chainId: getDefaultChainId(),
     query: {
       enabled: !!address,
     },
@@ -294,7 +294,7 @@ export default function PoolPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <a
-                              href={`${'https://snowtrace.io'}/address/${tx.wallet}`}
+                              href={getExplorerLink(getDefaultChainId(), 'address', tx.wallet)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-primary hover:underline font-mono text-xs"
@@ -304,7 +304,7 @@ export default function PoolPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <a
-                              href={`${'https://snowtrace.io'}/tx/${tx.txHash}`}
+                              href={getExplorerLink(getDefaultChainId(), 'tx', tx.txHash)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-muted-foreground hover:text-primary"
@@ -527,7 +527,7 @@ export default function PoolPage() {
                 <div>
                   <div className="text-muted-foreground mb-1">Contract</div>
                   <a
-                    href={`${'https://snowtrace.io'}/address/${CONTRACT_ADDRESSES.POOLS}`}
+                    href={getExplorerLink(getDefaultChainId(), 'address', CONTRACT_ADDRESSES.POOLS)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline font-mono text-xs"

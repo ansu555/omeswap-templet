@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useReadContract, usePublicClient, useBlockNumber } from 'wagmi';
+import { useReadContract, usePublicClient, useBlockNumber, useChainId } from 'wagmi';
 import { formatEther, Address, parseAbiItem } from 'viem';
-import { CONTRACT_ADDRESSES, TOKENS } from '@/contracts/config';
+import { TOKENS } from '@/contracts/config';
 import { MultiTokenLiquidityPoolsABI } from '@/contracts/abis';
-import { avalanche } from '@/lib/chains/avalanche';
+import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry';
 
 export interface PoolTransaction {
   time: string;
@@ -20,18 +20,27 @@ export interface PoolTransaction {
 export function usePoolDetails(poolId: number, token0Symbol: string, _token1Symbol: string) {
   const [transactions, setTransactions] = useState<PoolTransaction[]>([]);
   const [isLoadingTxs, setIsLoadingTxs] = useState(false);
-  const publicClient = usePublicClient({ chainId: avalanche.id });
-  const { data: currentBlock } = useBlockNumber({ chainId: avalanche.id });
+  const connectedChainId = useChainId();
+
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+  const poolsAddress = (chainConfig.omeswapPools ?? '0x0000000000000000000000000000000000000000') as Address;
+
+  const publicClient = usePublicClient({ chainId });
+  const { data: currentBlock } = useBlockNumber({ chainId });
 
   const token0 = TOKENS[token0Symbol];
 
   // Get pool info
   const { data: poolInfo, refetch } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: 'getPoolInfo',
     args: [BigInt(poolId)],
-    chainId: avalanche.id,
+    chainId,
   });
 
   // Parse pool data
@@ -55,7 +64,7 @@ export function usePoolDetails(poolId: number, token0Symbol: string, _token1Symb
 
         // Fetch Swap events
         const swapEvents = await publicClient.getLogs({
-          address: CONTRACT_ADDRESSES.POOLS as Address,
+          address: poolsAddress,
           event: parseAbiItem('event Swap(uint256 indexed poolId, address indexed user, address tokenIn, uint256 amountIn, uint256 amountOut)'),
           args: {
             poolId: poolIdBigInt,
@@ -65,7 +74,7 @@ export function usePoolDetails(poolId: number, token0Symbol: string, _token1Symb
 
         // Fetch LiquidityAdded events
         const addEvents = await publicClient.getLogs({
-          address: CONTRACT_ADDRESSES.POOLS as Address,
+          address: poolsAddress,
           event: parseAbiItem('event LiquidityAdded(uint256 indexed poolId, address indexed provider, uint256 amount0, uint256 amount1, uint256 lpTokens)'),
           args: {
             poolId: poolIdBigInt,
@@ -75,7 +84,7 @@ export function usePoolDetails(poolId: number, token0Symbol: string, _token1Symb
 
         // Fetch LiquidityRemoved events
         const removeEvents = await publicClient.getLogs({
-          address: CONTRACT_ADDRESSES.POOLS as Address,
+          address: poolsAddress,
           event: parseAbiItem('event LiquidityRemoved(uint256 indexed poolId, address indexed provider, uint256 amount0, uint256 amount1, uint256 lpTokens)'),
           args: {
             poolId: poolIdBigInt,
