@@ -36,5 +36,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# commit graph outputs, ignore the extraction cache
-graphify-out/cache/
+# graphify outputs - ignore extraction cache folders everywhere
+**/graphify-out/cache/
+.graphify-runs/*/cache/
