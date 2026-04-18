@@ -1,0 +1,190 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "layout.tsx",
+      "file_type": "code",
+      "source_file": "app/(app)/layout.tsx",
+      "source_location": "L1",
+      "id": "app_app_layout_tsx",
+      "community": 2,
+      "norm_label": "layout.tsx"
+    },
+    {
+      "label": "AppLayout()",
+      "file_type": "code",
+      "source_file": "app/(app)/layout.tsx",
+      "source_location": "L9",
+      "id": "layout_applayout",
+      "community": 2,
+      "norm_label": "applayout()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(app)/explore/page.tsx",
+      "source_location": "L1",
+      "id": "app_app_explore_page_tsx",
+      "community": 0,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "fetchTokens()",
+      "file_type": "code",
+      "source_file": "app/(app)/explore/page.tsx",
+      "source_location": "L97",
+      "id": "page_fetchtokens",
+      "community": 0,
+      "norm_label": "fetchtokens()"
+    },
+    {
+      "label": "handleToggleFavorite()",
+      "file_type": "code",
+      "source_file": "app/(app)/explore/page.tsx",
+      "source_location": "L125",
+      "id": "page_handletogglefavorite",
+      "community": 0,
+      "norm_label": "handletogglefavorite()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(app)/pool/[id]/page.tsx",
+      "source_location": "L1",
+      "id": "app_app_pool_id_page_tsx",
+      "community": 4,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(app)/portfolio/page.tsx",
+      "source_location": "L1",
+      "id": "app_app_portfolio_page_tsx",
+      "community": 1,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "generateChartData()",
+      "file_type": "code",
+      "source_file": "app/(app)/portfolio/page.tsx",
+      "source_location": "L52",
+      "id": "page_generatechartdata",
+      "community": 1,
+      "norm_label": "generatechartdata()"
+    },
+    {
+      "label": "fetchPrices()",
+      "file_type": "code",
+      "source_file": "app/(app)/portfolio/page.tsx",
+      "source_location": "L84",
+      "id": "page_fetchprices",
+      "community": 1,
+      "norm_label": "fetchprices()"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(app)/trade/page.tsx",
+      "source_location": "L1",
+      "id": "app_app_trade_page_tsx",
+      "community": 5,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "page.tsx",
+      "file_type": "code",
+      "source_file": "app/(app)/transactions/page.tsx",
+      "source_location": "L1",
+      "id": "app_app_transactions_page_tsx",
+      "community": 3,
+      "norm_label": "page.tsx"
+    },
+    {
+      "label": "TransactionHistory()",
+      "file_type": "code",
+      "source_file": "app/(app)/transactions/page.tsx",
+      "source_location": "L43",
+      "id": "page_transactionhistory",
+      "community": 3,
+      "norm_label": "transactionhistory()"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(app)/layout.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_src": "app_app_layout_tsx",
+      "_tgt": "layout_applayout",
+      "source": "app_app_layout_tsx",
+      "target": "layout_applayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(app)/explore/page.tsx",
+      "source_location": "L97",
+      "weight": 1.0,
+      "_src": "app_app_explore_page_tsx",
+      "_tgt": "page_fetchtokens",
+      "source": "app_app_explore_page_tsx",
+      "target": "page_fetchtokens",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(app)/explore/page.tsx",
+      "source_location": "L125",
+      "weight": 1.0,
+      "_src": "app_app_explore_page_tsx",
+      "_tgt": "page_handletogglefavorite",
+      "source": "app_app_explore_page_tsx",
+      "target": "page_handletogglefavorite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(app)/portfolio/page.tsx",
+      "source_location": "L52",
+      "weight": 1.0,
+      "_src": "app_app_portfolio_page_tsx",
+      "_tgt": "page_generatechartdata",
+      "source": "app_app_portfolio_page_tsx",
+      "target": "page_generatechartdata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(app)/portfolio/page.tsx",
+      "source_location": "L84",
+      "weight": 1.0,
+      "_src": "app_app_portfolio_page_tsx",
+      "_tgt": "page_fetchprices",
+      "source": "app_app_portfolio_page_tsx",
+      "target": "page_fetchprices",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/(app)/transactions/page.tsx",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_src": "app_app_transactions_page_tsx",
+      "_tgt": "page_transactionhistory",
+      "source": "app_app_transactions_page_tsx",
+      "target": "page_transactionhistory",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": []
+}
