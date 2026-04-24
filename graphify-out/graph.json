@@ -7858,8 +7858,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/avax-agent/lib/backtest/BacktestRunner.ts",
       "source_location": "L140",
       "weight": 1.0,
-      "_src": "backtestrunner_runbacktest",
-      "_tgt": "route_get",
+      "_src": "route_get",
+      "_tgt": "backtestrunner_runbacktest",
       "source": "route_get",
       "target": "backtestrunner_runbacktest"
     },
@@ -7870,8 +7870,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/avax-agent/lib/engine/BotRunner.ts",
       "source_location": "L54",
       "weight": 1.0,
-      "_src": "botrunner_runbot",
-      "_tgt": "route_get",
+      "_src": "route_get",
+      "_tgt": "botrunner_runbot",
       "source": "route_get",
       "target": "botrunner_runbot"
     },
@@ -7882,8 +7882,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/components/agent-builder/canvas/ConfigPanel.tsx",
       "source_location": "L36",
       "weight": 1.0,
-      "_src": "configpanel_configpanel",
-      "_tgt": "route_get",
+      "_src": "route_get",
+      "_tgt": "configpanel_configpanel",
       "source": "route_get",
       "target": "configpanel_configpanel"
     },
