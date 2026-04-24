@@ -1,2 +1,0 @@
-This run: 0 input tokens, 0 output tokens
-All time: 0 input, 0 output (25 runs)

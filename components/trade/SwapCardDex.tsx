@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowUpDown, ChevronDown, Settings, Check, Wallet, Search, ExternalLink, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDexAggregator, DexSource } from "@/hooks/use-dex-aggregator";
+import { useDexAggregator } from "@/hooks/use-dex-aggregator";
 import { useWallet } from "@/hooks/use-wallet";
 import { TOKEN_LIST, TOKEN_ADDRESSES } from "@/contracts/config";
 import { useTokenBalances } from "@/hooks/use-token-balances";
