@@ -18,6 +18,7 @@ import { StartNode } from './flow/StartNode'
 import { EndNode } from './flow/EndNode'
 import { MergeNode } from './flow/MergeNode'
 import { ScheduleTriggerNode } from './flow/ScheduleTriggerNode'
+import { SubgraphIndicatorNode } from './data/SubgraphIndicatorNode'
 import type { NodeCategory } from '@/types/agent-builder-canvas'
 
 export interface NodeRegistryEntry {
@@ -68,6 +69,7 @@ export const NODE_REGISTRY: Record<string, NodeRegistryEntry> = {
   end:              { cls: EndNode,              meta: meta(EndNode) },
   merge:            { cls: MergeNode,            meta: meta(MergeNode) },
   schedule_trigger: { cls: ScheduleTriggerNode,  meta: meta(ScheduleTriggerNode) },
+  subgraph_indicator: { cls: SubgraphIndicatorNode, meta: meta(SubgraphIndicatorNode) },
 }
 
 export function createNodeInstance(type: string, id: string): BaseNode {

@@ -45,8 +45,8 @@ export async function runBot(
   onStatus: StatusFn,
   onIO: IOFn,
   onToast: ToastFn,
-  onMarker: MarkerFn = () => {}
-) {
+  onMarker: MarkerFn = () => {},
+): Promise<Record<string, Record<string, unknown>>> {
   const order = topologicalSort(nodes, edges)
   const outputs: Record<string, Record<string, unknown>> = {}
 
@@ -95,4 +95,6 @@ export async function runBot(
       break
     }
   }
+
+  return outputs
 }
