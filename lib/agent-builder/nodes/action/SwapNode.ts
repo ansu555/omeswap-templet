@@ -7,6 +7,7 @@ import type {
 import { ethers } from "ethers";
 import { useTransactionStore } from "@/store/transaction-store";
 import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
+import { normalizeWalletAddress } from "@/lib/onboarding";
 
 const ROUTER_ABI = [
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
@@ -182,6 +183,41 @@ export class SwapNode extends BaseNode {
     context.addLog(`[Swap] Tx submitted: ${tx.hash}`);
     await tx.wait();
     context.addLog(`[Swap] Confirmed!`);
+
+    if (
+      context.activationId &&
+      context.strategyVersionId &&
+      context.walletAddress &&
+      typeof fetch !== "undefined"
+    ) {
+      try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "x-wallet-address": normalizeWalletAddress(context.walletAddress),
+        };
+        void fetch("/api/receipts", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            activation_id: context.activationId,
+            strategy_version_id: context.strategyVersionId,
+            mode: "live",
+            asset_pair: `${tokenIn}/${tokenOut}`,
+            signal: { type: "swap", tokenIn, tokenOut, amountIn },
+            execution_request: {
+              dex,
+              amountIn,
+              slippage,
+            },
+            execution_result: { txHash: tx.hash },
+            status: "confirmed",
+            tx_hash: tx.hash,
+          }),
+        });
+      } catch {
+        /* non-critical */
+      }
+    }
 
     // Record in global transaction store
     try {
