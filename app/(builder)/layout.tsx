@@ -4,6 +4,7 @@ import { AvalancheWalletProvider } from "@/components/providers/avalanche-wallet
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ChatProvider } from "@/components/providers/chat-provider";
 import { ChatbotPanel, ChatToggleButton } from "@/components/ui/chatbot-panel";
+import { OnboardingGuard } from "@/components/providers/onboarding-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default function BuilderLayout({
       disableTransitionOnChange
     >
       <AvalancheWalletProvider>
+        <OnboardingGuard />
         <ChatProvider>
           <BackgroundPaths />
           <div className="flex flex-col h-screen overflow-hidden">
