@@ -24,16 +24,22 @@ import {
   Info,
   AlertTriangle,
   Bot,
+  Upload,
 } from "lucide-react";
 import clsx from "clsx";
 import WorkflowManager from "./WorkflowManager";
 import BacktestConfigStrip from "./BacktestConfigStrip";
 import BacktestSummaryModal from "./BacktestSummaryModal";
+import { PublishModal } from "./PublishModal";
 import type { LogEntry } from "@/types/agent-builder-canvas";
 
 type LogFilter = "all" | "info" | "warn" | "error";
 
-export default function TopBar() {
+export default function TopBar({
+  publishMode = "strategy",
+}: {
+  publishMode?: "strategy" | "indicator";
+}) {
   const {
     walletAddress,
     setWallet,
@@ -67,6 +73,7 @@ export default function TopBar() {
     useAvalancheWallet();
 
   const [showLogs, setShowLogs] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [logFilter, setLogFilter] = useState<LogFilter>("all");
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -149,6 +156,14 @@ export default function TopBar() {
       walletAddress,
       provider,
       signer,
+      activationId:
+        typeof window !== "undefined" ?
+          sessionStorage.getItem("omeswap_activation_id")
+        : null,
+      strategyVersionId:
+        typeof window !== "undefined" ?
+          sessionStorage.getItem("omeswap_strategy_version_id")
+        : null,
       addLog: () => {},
       showToast: () => {},
       addChartMarker: () => {},
@@ -444,6 +459,15 @@ export default function TopBar() {
               Workflows
             </button>
 
+            <button
+              type="button"
+              onClick={() => setPublishOpen(true)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border/50 hover:border-emerald-500/40 text-muted-foreground hover:text-foreground hover:bg-emerald-500/10 transition-all"
+            >
+              <Upload size={14} />
+              Marketplace
+            </button>
+
             {/* Agent toggle */}
             <button
               onClick={() => setAgentOpen(!agentOpen)}
@@ -576,6 +600,12 @@ export default function TopBar() {
           )}
         </AnimatePresence>
       </motion.div>
+
+      <PublishModal
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        mode={publishMode}
+      />
     </>
   );
 }

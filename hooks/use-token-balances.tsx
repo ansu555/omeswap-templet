@@ -1,21 +1,28 @@
 "use client";
 
-import { useReadContracts } from "wagmi";
+import { useReadContracts, useChainId } from "wagmi";
 import { formatUnits, Address, Abi } from "viem";
 import { TOKEN_ADDRESSES } from "@/contracts/config";
 import { ERC20ABI } from "@/contracts/abis";
-import { avalanche } from "@/lib/chains/avalanche";
+import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 
 const TOKEN_ENTRIES = Object.entries(TOKEN_ADDRESSES);
 
 export function useTokenBalances(walletAddress: string | undefined) {
+  const connectedChainId = useChainId();
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+
   const { data } = useReadContracts({
     contracts: TOKEN_ENTRIES.map(([, token]) => ({
       address: token.address as Address,
       abi: ERC20ABI as Abi,
       functionName: "balanceOf" as const,
       args: [walletAddress as Address],
-      chainId: avalanche.id,
+      chainId,
     })),
     query: { enabled: !!walletAddress },
   });

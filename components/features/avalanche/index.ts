@@ -1,1 +1,4 @@
-export { default as AvalancheWalletConnect } from './avalanche-wallet-connect';
+/**
+ * Backward-compat re-export. New code should import from @/components/features/wallet.
+ */
+export { WalletConnect, AvalancheWalletConnect } from '@/components/features/wallet';

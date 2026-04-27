@@ -3,15 +3,17 @@
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "./logo";
-import { Compass, ArrowLeftRight, Wallet, Receipt, Bot } from "lucide-react";
+import { Compass, ArrowLeftRight, Wallet, Receipt, Bot, Store, Library } from "lucide-react";
 import { gsap } from "gsap";
-import { AvalancheWalletConnect } from "@/components/features/avalanche";
+import { WalletConnect } from "@/components/features/wallet";
 import { NavBar } from "@/components/ui/nav-bar";
 
 const navItems = [
   { name: "Explore", url: "/explore", icon: Compass },
   { name: "Trade", url: "/trade", icon: ArrowLeftRight },
   { name: "Portfolio", url: "/portfolio", icon: Wallet },
+  { name: "Marketplace", url: "/marketplace", icon: Store },
+  { name: "Library", url: "/library", icon: Library },
   { name: "Agent", url: "/agent-builder", icon: Bot },
   { name: "Txns", url: "/transactions", icon: Receipt },
 ];
@@ -52,7 +54,7 @@ export const Header = () => {
 
           {/* Right Section - Connect Wallet */}
           <div className="hidden md:flex items-center">
-            <AvalancheWalletConnect />
+            <WalletConnect />
           </div>
 
           {/* Mobile Menu Button */}

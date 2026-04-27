@@ -6,15 +6,25 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useChainId,
 } from "wagmi";
 import { parseEther, formatEther, Address } from "viem";
-import { CONTRACT_ADDRESSES, TOKENS } from "@/contracts/config";
+import { TOKENS } from "@/contracts/config";
 import { MultiTokenLiquidityPoolsABI, ERC20ABI } from "@/contracts/abis";
-import { avalanche } from "@/lib/chains/avalanche";
+import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 import { useTransactionStore } from "@/store/transaction-store";
 
 export function useLiquidity(token0Symbol: string, token1Symbol: string) {
   const { address } = useAccount();
+  const connectedChainId = useChainId();
+
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+  const poolsAddress = (chainConfig.omeswapPools ?? '0x0000000000000000000000000000000000000000') as Address;
+
   const [amount0, setAmount0] = useState<string>("");
   const [amount1, setAmount1] = useState<string>("");
 
@@ -44,20 +54,20 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
 
   // Get pool ID
   const { data: poolId } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: "getPoolId",
     args: [token0Addr, token1Addr],
-    chainId: avalanche.id,
+    chainId,
   });
 
   // Get pool info
   const { data: poolInfo, refetch: refetchPoolInfo } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: "getPoolInfo",
     args: [poolId as bigint],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: !!poolId,
     },
@@ -65,11 +75,11 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
 
   // Get user position
   const { data: userPosition, refetch: refetchPosition } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: "getUserPosition",
     args: [poolId as bigint, address as Address],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: !!poolId && !!address,
     },
@@ -80,8 +90,8 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
     address: token0.address as Address,
     abi: ERC20ABI,
     functionName: "allowance",
-    args: [address as Address, CONTRACT_ADDRESSES.POOLS as Address],
-    chainId: avalanche.id,
+    args: [address as Address, poolsAddress],
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -92,8 +102,8 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
     address: token1.address as Address,
     abi: ERC20ABI,
     functionName: "allowance",
-    args: [address as Address, CONTRACT_ADDRESSES.POOLS as Address],
-    chainId: avalanche.id,
+    args: [address as Address, poolsAddress],
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -105,7 +115,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
     abi: ERC20ABI,
     functionName: "balanceOf",
     args: [address as Address],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -116,7 +126,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
     abi: ERC20ABI,
     functionName: "balanceOf",
     args: [address as Address],
-    chainId: avalanche.id,
+    chainId,
     query: {
       enabled: !!address,
     },
@@ -130,8 +140,8 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
       address: token0.address as Address,
       abi: ERC20ABI,
       functionName: "approve",
-      args: [CONTRACT_ADDRESSES.POOLS as Address, parseEther(amount0)],
-      chainId: avalanche.id,
+      args: [poolsAddress, parseEther(amount0)],
+      chainId,
     });
   };
 
@@ -143,8 +153,8 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
       address: token1.address as Address,
       abi: ERC20ABI,
       functionName: "approve",
-      args: [CONTRACT_ADDRESSES.POOLS as Address, parseEther(amount1)],
-      chainId: avalanche.id,
+      args: [poolsAddress, parseEther(amount1)],
+      chainId,
     });
   };
 
@@ -175,7 +185,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
       });
 
       writeContract({
-        address: CONTRACT_ADDRESSES.POOLS as Address,
+        address: poolsAddress,
         abi: MultiTokenLiquidityPoolsABI,
         functionName: "addLiquidity",
         args: [
@@ -185,7 +195,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
           BigInt(0), // min amount0
           BigInt(0), // min amount1
         ],
-        chainId: avalanche.id,
+        chainId,
       });
     } catch (error: any) {
       console.error("Error in addLiquidity:", error);
@@ -197,7 +207,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
     if (!poolId) return;
 
     writeContract({
-      address: CONTRACT_ADDRESSES.POOLS as Address,
+      address: poolsAddress,
       abi: MultiTokenLiquidityPoolsABI,
       functionName: "removeLiquidity",
       args: [
@@ -206,7 +216,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
         BigInt(0), // min amount0
         BigInt(0), // min amount1
       ],
-      chainId: avalanche.id,
+      chainId,
     });
   };
 

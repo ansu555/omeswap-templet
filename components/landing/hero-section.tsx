@@ -91,7 +91,7 @@ function HeroContent() {
       </p>
       <div className="flex pointer-events-auto flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-3">
         <Link
-          href="/explore"
+          href="/onboarding"
           className="bg-purple-600/20 hover:bg-purple-600/30 text-white font-semibold py-2 sm:py-3 px-6 sm:px-8 rounded-full transition duration-300 w-full sm:w-auto border border-purple-500/30 text-center"
           style={{ backdropFilter: "blur(8px)" }}
         >
@@ -117,7 +117,7 @@ function LandingHeader() {
 
           {/* Right Section - Launch App Button */}
           <Link
-            href="/explore"
+            href="/onboarding"
             className="flex items-center gap-2.5 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-lg shadow-lg px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
           >
             Launch App

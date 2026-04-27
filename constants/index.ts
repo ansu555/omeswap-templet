@@ -2,10 +2,8 @@
 
 export const APP_NAME = 'Omeswap';
 
-export const CHAIN_IDS = {
-  AVALANCHE_MAINNET: 43114,
-  AVALANCHE_FUJI: 43113,
-} as const;
+// Chain IDs live in the registry — see lib/chain-registry/index.ts (DEFAULT_CHAIN_ID)
+// and lib/chain-registry/chains/ for per-chain configuration.
 
 export const ROUTES = {
   HOME: '/',

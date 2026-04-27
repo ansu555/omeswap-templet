@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Plus, Settings, ExternalLink, Info } from "lucide-react";
 import { useLiquidity } from "@/hooks/use-liquidity";
-import { useAvalancheWallet } from "@/hooks/use-avalanche-wallet";
+import { useWallet } from "@/hooks/use-wallet";
 import { TOKENS } from "@/contracts/config";
-import AvalancheWalletConnect from "@/components/features/avalanche/avalanche-wallet-connect";
-import { avalanche } from '@/lib/chains/avalanche';
+import WalletConnect from "@/components/features/wallet/wallet-connect";
+import { getExplorerLink, getDefaultChainId } from '@/lib/chain-registry';
 import {
   Select,
   SelectContent,
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 
 export function AddLiquidityCard() {
-  const { isConnected, chain } = useAvalancheWallet();
+  const { isConnected, chain } = useWallet();
   const [token0Symbol, setToken0Symbol] = useState<string>('USDC');
   const [token1Symbol, setToken1Symbol] = useState<string>('USDTe');
 
@@ -68,7 +68,7 @@ export function AddLiquidityCard() {
     parseFloat(balance0) >= parseFloat(amount0) &&
     parseFloat(balance1) >= parseFloat(amount1);
 
-  const isWrongNetwork = isConnected && chain?.id !== avalanche.id;
+  const isWrongNetwork = isConnected && chain?.id !== getDefaultChainId();
 
   if (!isConnected) {
     return (
@@ -77,7 +77,7 @@ export function AddLiquidityCard() {
         <p className="text-muted-foreground mb-6">
           Connect your wallet to provide liquidity
         </p>
-        <AvalancheWalletConnect variant="default" />
+        <WalletConnect variant="default" />
       </div>
     );
   }
@@ -276,7 +276,7 @@ export function AddLiquidityCard() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-success font-medium">✅ Liquidity Added!</span>
               <a
-                href={`${'https://snowtrace.io'}/tx/${hash}`}
+                href={getExplorerLink(chain?.id ?? getDefaultChainId(), 'tx', hash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-primary hover:underline flex items-center gap-1"

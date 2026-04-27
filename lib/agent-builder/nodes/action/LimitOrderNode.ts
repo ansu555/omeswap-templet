@@ -1,5 +1,9 @@
 import { BaseNode } from '../BaseNode'
 import type { HandleDef, ConfigField, ExecutionContext } from '@/types/agent-builder-canvas'
+import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry'
+
+// Resolved once at module load from the chain registry
+const _tokenSymbols = Object.keys(getChainConfig(getDefaultChainId()).tokens)
 
 export class LimitOrderNode extends BaseNode {
   readonly type = 'limit_order'
@@ -33,14 +37,14 @@ export class LimitOrderNode extends BaseNode {
       key: 'tokenIn',
       label: 'Token In',
       type: 'select',
-      options: ['WAVAX', 'USDC.e', 'USDT.e', 'JOE', 'PNG'],
+      options: _tokenSymbols,
       default: 'WAVAX',
     },
     {
       key: 'tokenOut',
       label: 'Token Out',
       type: 'select',
-      options: ['WAVAX', 'USDC.e', 'USDT.e', 'JOE', 'PNG'],
+      options: _tokenSymbols,
       default: 'USDC.e',
     },
   ]

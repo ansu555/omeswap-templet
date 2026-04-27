@@ -7,21 +7,13 @@ import {
   useWaitForTransactionReceipt,
   usePublicClient,
   useReadContract,
+  useChainId,
 } from "wagmi";
 import { parseUnits, formatUnits, Address } from "viem";
-import {
-  MAINNET_TOKENS,
-  DEX_ROUTERS,
-  WAVAX_ADDRESS,
-  TOKEN_ADDRESSES,
-  TRADER_JOE_V2,
-} from "@/contracts/config";
+import { MAINNET_TOKENS } from "@/contracts/config";
 import { ERC20ABI } from "@/contracts/abis";
-import { avalanche } from "@/lib/chains/avalanche";
+import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 import { useTransactionStore } from "@/store/transaction-store";
-
-// USDC.e (bridged) — used as intermediate hop when direct path has no liquidity
-const USDCE_ADDRESS = TOKEN_ADDRESSES["USDC.e"].address;
 
 // UniswapV2-compatible router ABI (TraderJoe V1, Pangolin)
 const V1_ROUTER_ABI = [
@@ -107,7 +99,7 @@ const TJ_V2_ROUTER_ABI = [
   },
 ] as const;
 
-export type DexSource = "traderjoe" | "traderjoe_v2" | "pangolin";
+export type DexSource = string;
 
 export interface DexQuote {
   dex: DexSource;
@@ -121,15 +113,6 @@ export interface DexQuote {
   isBest: boolean;
 }
 
-const V1_DEX_CONFIG: { dex: DexSource; dexName: string; router: Address }[] = [
-  {
-    dex: "traderjoe",
-    dexName: "Trader Joe V1",
-    router: DEX_ROUTERS.TRADER_JOE,
-  },
-  { dex: "pangolin", dexName: "Pangolin", router: DEX_ROUTERS.PANGOLIN },
-];
-
 export function useDexAggregator(
   tokenInSymbol: string,
   tokenOutSymbol: string,
@@ -137,7 +120,22 @@ export function useDexAggregator(
   slippage: number,
 ) {
   const { address } = useAccount();
-  const publicClient = usePublicClient({ chainId: avalanche.id });
+  const connectedChainId = useChainId();
+
+  // Fall back to the default chain if the connected chain is not registered
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+
+  const publicClient = usePublicClient({ chainId });
+
+  // DEX config derived from registry
+  const v1DexConfig = chainConfig.dexRouters
+    .filter(r => r.type === 'uniswapV2')
+    .map(r => ({ dex: r.id as DexSource, dexName: r.name, router: r.routerAddress }));
+  const tjV2 = chainConfig.dexRouters.find(r => r.type === 'traderJoeV2');
 
   const [quotes, setQuotes] = useState<DexQuote[]>([]);
   const [selectedDex, setSelectedDex] = useState<DexSource>("traderjoe_v2");
@@ -148,14 +146,14 @@ export function useDexAggregator(
   const tokenIn = MAINNET_TOKENS[tokenInSymbol];
   const tokenOut = MAINNET_TOKENS[tokenOutSymbol];
 
-  const selectedDexConfig = V1_DEX_CONFIG.find((d) => d.dex === selectedDex);
+  const selectedDexConfig = v1DexConfig.find((d) => d.dex === selectedDex);
   const selectedQuote =
     quotes.find((q) => q.dex === selectedDex) ?? quotes[0] ?? null;
 
   const approvalSpender: Address =
     selectedDex === "traderjoe_v2"
-      ? TRADER_JOE_V2.ROUTER
-      : (selectedDexConfig?.router ?? DEX_ROUTERS.TRADER_JOE);
+      ? (tjV2?.routerAddress ?? v1DexConfig[0]?.router)
+      : (selectedDexConfig?.router ?? v1DexConfig[0]?.router);
 
   // Balance query
   const { data: balance, refetch: refetchBalance } = useReadContract({
@@ -163,7 +161,7 @@ export function useDexAggregator(
     abi: ERC20ABI,
     functionName: "balanceOf",
     args: [address as Address],
-    chainId: avalanche.id,
+    chainId,
     query: { enabled: !!address && !!tokenIn },
   });
 
@@ -173,7 +171,7 @@ export function useDexAggregator(
     abi: ERC20ABI,
     functionName: "allowance",
     args: [address as Address, approvalSpender],
-    chainId: avalanche.id,
+    chainId,
     query: { enabled: !!address && !!tokenIn },
   });
 
@@ -232,48 +230,47 @@ export function useDexAggregator(
       const newQuotes: DexQuote[] = [];
 
       // --- TraderJoe V2 quote ---
-      try {
-        const quote = (await publicClient.readContract({
-          address: TRADER_JOE_V2.QUOTER,
-          abi: TJ_V2_QUOTER_ABI,
-          functionName: "findBestPathFromAmountIn",
-          args: [[tokenIn.address, tokenOut.address], BigInt(amountIn)],
-        })) as any;
+      if (tjV2?.quoterAddress) {
+        try {
+          const quote = (await publicClient.readContract({
+            address: tjV2.quoterAddress,
+            abi: TJ_V2_QUOTER_ABI,
+            functionName: "findBestPathFromAmountIn",
+            args: [[tokenIn.address, tokenOut.address], BigInt(amountIn)],
+          })) as any;
 
-        const amounts: bigint[] = quote.amounts;
-        const amountOut = amounts[amounts.length - 1];
-        if (amountOut > 0n) {
-          newQuotes.push({
-            dex: "traderjoe_v2",
-            dexName: "Trader Joe",
-            amountOut,
-            amountOutFormatted: formatUnits(amountOut, tokenOut.decimals),
-            path: quote.route as Address[],
-            v2BinSteps: quote.binSteps as bigint[],
-            v2Versions: quote.versions as number[],
-            isBest: false,
-          });
+          const amounts: bigint[] = quote.amounts;
+          const amountOut = amounts[amounts.length - 1];
+          if (amountOut > 0n) {
+            newQuotes.push({
+              dex: tjV2.id,
+              dexName: tjV2.name,
+              amountOut,
+              amountOutFormatted: formatUnits(amountOut, tokenOut.decimals),
+              path: quote.route as Address[],
+              v2BinSteps: quote.binSteps as bigint[],
+              v2Versions: quote.versions as number[],
+              isBest: false,
+            });
+          }
+        } catch {
+          // No V2 liquidity
         }
-      } catch {
-        // No V2 liquidity
       }
 
-      // --- V1 DEX quotes (TraderJoe V1, Pangolin) ---
-      for (const { dex, dexName, router } of V1_DEX_CONFIG) {
+      // --- V1 DEX quotes (TraderJoe V1, Pangolin, …) ---
+      for (const { dex, dexName, router } of v1DexConfig) {
+        // Always try direct path
         const paths: Address[][] = [[tokenIn.address, tokenOut.address]];
 
-        if (
-          tokenIn.address.toLowerCase() !== WAVAX_ADDRESS.toLowerCase() &&
-          tokenOut.address.toLowerCase() !== WAVAX_ADDRESS.toLowerCase()
-        ) {
-          paths.push([tokenIn.address, WAVAX_ADDRESS, tokenOut.address]);
-        }
-
-        if (
-          tokenIn.address.toLowerCase() !== USDCE_ADDRESS.toLowerCase() &&
-          tokenOut.address.toLowerCase() !== USDCE_ADDRESS.toLowerCase()
-        ) {
-          paths.push([tokenIn.address, USDCE_ADDRESS, tokenOut.address]);
+        // Try hub paths for each registered hub token
+        for (const hubAddress of chainConfig.hubTokens) {
+          if (
+            tokenIn.address.toLowerCase() !== hubAddress.toLowerCase() &&
+            tokenOut.address.toLowerCase() !== hubAddress.toLowerCase()
+          ) {
+            paths.push([tokenIn.address, hubAddress, tokenOut.address]);
+          }
         }
 
         let bestAmountOut = 0n;
@@ -336,12 +333,13 @@ export function useDexAggregator(
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
 
     if (
-      selectedDex === "traderjoe_v2" &&
+      tjV2 &&
+      selectedDex === tjV2.id &&
       selectedQuote.v2BinSteps &&
       selectedQuote.v2Versions
     ) {
       writeSwap({
-        address: TRADER_JOE_V2.ROUTER,
+        address: tjV2.routerAddress,
         abi: TJ_V2_ROUTER_ABI,
         functionName: "swapExactTokensForTokens",
         args: [
@@ -355,16 +353,17 @@ export function useDexAggregator(
           address,
           deadline,
         ],
-        chainId: avalanche.id,
+        chainId,
       });
     } else {
-      const router = V1_DEX_CONFIG.find((d) => d.dex === selectedDex)!.router;
+      const router = v1DexConfig.find((d) => d.dex === selectedDex)?.router
+        ?? v1DexConfig[0]?.router;
       writeSwap({
         address: router,
         abi: V1_ROUTER_ABI,
         functionName: "swapExactTokensForTokens",
         args: [amountIn, amountOutMin, selectedQuote.path, address, deadline],
-        chainId: avalanche.id,
+        chainId,
       });
     }
   };
@@ -380,7 +379,7 @@ export function useDexAggregator(
         abi: ERC20ABI,
         functionName: "approve",
         args: [approvalSpender, parseUnits(amountInRaw, tokenIn.decimals)],
-        chainId: avalanche.id,
+        chainId,
       });
     } else {
       executeSwapTx();

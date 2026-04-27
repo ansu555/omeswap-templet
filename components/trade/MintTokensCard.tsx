@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { Coins, ExternalLink, RefreshCw } from "lucide-react";
 import { useTokenMint } from "@/hooks/use-token-mint";
-import { useAvalancheWallet } from "@/hooks/use-avalanche-wallet";
+import { useWallet } from "@/hooks/use-wallet";
 import { TOKENS, TOKEN_LIST } from "@/contracts/config";
-import AvalancheWalletConnect from "@/components/features/avalanche/avalanche-wallet-connect";
-import { avalanche } from '@/lib/chains/avalanche';
+import WalletConnect from "@/components/features/wallet/wallet-connect";
+import { getExplorerLink, getDefaultChainId } from '@/lib/chain-registry';
 
 export function MintTokensCard() {
-  const { isConnected, chain } = useAvalancheWallet();
+  const { isConnected, chain } = useWallet();
   const [minting, setMinting] = useState<{ [key: string]: boolean }>({});
   const [lastMinted, setLastMinted] = useState<{ [key: string]: string }>({});
 
@@ -43,7 +43,7 @@ export function MintTokensCard() {
         <div className="flex items-center gap-2">
           {isSuccess && lastMinted[tokenSymbol] && (
             <a
-              href={`${'https://snowtrace.io'}/tx/${lastMinted[tokenSymbol]}`}
+              href={getExplorerLink(chain?.id ?? getDefaultChainId(), 'tx', lastMinted[tokenSymbol])}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-success hover:underline flex items-center gap-1"
@@ -82,12 +82,12 @@ export function MintTokensCard() {
         <p className="text-muted-foreground mb-6">
           Connect your wallet to mint test tokens for the DEX
         </p>
-        <AvalancheWalletConnect variant="default" />
+        <WalletConnect variant="default" />
       </div>
     );
   }
 
-  if (chain?.id !== avalanche.id) {
+  if (chain?.id !== getDefaultChainId()) {
     return (
       <div className="swap-card w-full max-w-2xl p-8 text-center">
         <h3 className="text-xl font-semibold mb-4 text-destructive">Wrong Network</h3>

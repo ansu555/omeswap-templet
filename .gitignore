@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.venv
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -34,3 +35,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# graphify outputs - ignore extraction cache folders everywhere
+**/graphify-out/cache/
+.graphify-runs/*/cache/

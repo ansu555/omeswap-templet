@@ -353,7 +353,7 @@ function UnichainCard() {
   return (
     <BentoCard
       className="bg-gradient-to-br from-[#2a0a2a] to-[#1a081a] border border-pink-500/10 h-full"
-      href="/explore"
+      href="/onboarding"
     >
       <div
         ref={contentRef}

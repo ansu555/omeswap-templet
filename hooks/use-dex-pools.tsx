@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useReadContract, usePublicClient } from 'wagmi';
+import { useReadContract, usePublicClient, useChainId } from 'wagmi';
 import { formatEther, Address } from 'viem';
-import { CONTRACT_ADDRESSES, TOKENS } from '@/contracts/config';
+import { TOKENS } from '@/contracts/config';
 import { MultiTokenLiquidityPoolsABI } from '@/contracts/abis';
-import { avalanche } from '@/lib/chains/avalanche';
+import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry';
 
 export interface DexPool {
   id: string;
@@ -46,14 +46,23 @@ const POOL_PAIRS = [
 export function useDexPools() {
   const [pools, setPools] = useState<DexPool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const publicClient = usePublicClient({ chainId: avalanche.id });
+  const connectedChainId = useChainId();
+
+  const chainConfig = (() => {
+    try { return getChainConfig(connectedChainId) }
+    catch { return getChainConfig(getDefaultChainId()) }
+  })();
+  const chainId = chainConfig.chain.id;
+  const poolsAddress = (chainConfig.omeswapPools ?? '0x0000000000000000000000000000000000000000') as Address;
+
+  const publicClient = usePublicClient({ chainId });
 
   // Get pool count
   const { data: poolCount } = useReadContract({
-    address: CONTRACT_ADDRESSES.POOLS as Address,
+    address: poolsAddress,
     abi: MultiTokenLiquidityPoolsABI,
     functionName: 'poolCount',
-    chainId: avalanche.id,
+    chainId,
   });
 
   useEffect(() => {
@@ -72,7 +81,7 @@ export function useDexPools() {
           try {
             // Get pool info directly
             const poolInfo = await publicClient.readContract({
-              address: CONTRACT_ADDRESSES.POOLS as Address,
+              address: poolsAddress,
               abi: MultiTokenLiquidityPoolsABI,
               functionName: 'getPoolInfo',
               args: [BigInt(i)],
@@ -139,4 +148,3 @@ export function useDexPools() {
     isLoading,
   };
 }
-
