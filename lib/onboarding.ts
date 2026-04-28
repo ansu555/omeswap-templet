@@ -34,6 +34,7 @@ export interface QuestionOption {
 export interface RiskQuestion {
   id: QuestionId
   title: string
+  description: string
   options: QuestionOption[]
 }
 
@@ -51,6 +52,7 @@ export const RISK_QUESTIONS: RiskQuestion[] = [
   {
     id: 'q1',
     title: 'Investment horizon',
+    description: 'How long do you plan to keep your crypto portfolio invested before needing the funds? Longer horizons allow you to ride out volatility.',
     options: [
       { id: 'q1_o1', label: 'Less than 1 year', score: 1 },
       { id: 'q1_o2', label: '1 to 2 years', score: 2 },
@@ -61,79 +63,86 @@ export const RISK_QUESTIONS: RiskQuestion[] = [
   },
   {
     id: 'q2',
-    title: 'Reaction to a sudden 20-30% drop',
+    title: 'Reaction to a sudden 20–30% drop',
+    description: 'Imagine your portfolio loses 20–30% of its value in a week. What would you realistically do? This reveals your emotional risk tolerance.',
     options: [
-      { id: 'q2_o1', label: 'Sell immediately', score: 1 },
-      { id: 'q2_o2', label: 'Sell part to reduce risk', score: 2 },
-      { id: 'q2_o3', label: 'Hold and wait', score: 3 },
-      { id: 'q2_o4', label: 'Buy a little more', score: 4 },
-      { id: 'q2_o5', label: 'Buy aggressively', score: 5 },
+      { id: 'q2_o1', label: 'Sell immediately — protect what\'s left', score: 1 },
+      { id: 'q2_o2', label: 'Sell part to reduce exposure', score: 2 },
+      { id: 'q2_o3', label: 'Hold and wait for recovery', score: 3 },
+      { id: 'q2_o4', label: 'Buy a little more at the dip', score: 4 },
+      { id: 'q2_o5', label: 'Buy aggressively — great opportunity', score: 5 },
     ],
   },
   {
     id: 'q3',
-    title: 'Maximum acceptable annual drawdown',
+    title: 'Maximum acceptable drawdown',
+    description: 'Drawdown is the peak-to-trough decline in your portfolio value. What\'s the largest loss you could endure in a single year without abandoning your strategy?',
     options: [
-      { id: 'q3_o1', label: 'Up to 5%', score: 1 },
+      { id: 'q3_o1', label: 'Up to 5% — very conservative', score: 1 },
       { id: 'q3_o2', label: 'Up to 10%', score: 2 },
       { id: 'q3_o3', label: 'Up to 20%', score: 3 },
       { id: 'q3_o4', label: 'Up to 30%', score: 4 },
-      { id: 'q3_o5', label: 'More than 30%', score: 5 },
+      { id: 'q3_o5', label: 'More than 30% — high risk tolerance', score: 5 },
     ],
   },
   {
     id: 'q4',
-    title: 'Allocation comfort in high-volatility assets',
+    title: 'Allocation to high-volatility assets',
+    description: 'High-volatility assets (altcoins, new DeFi protocols) offer higher upside but can drop 70%+. What share of your portfolio are you comfortable holding in such assets?',
     options: [
-      { id: 'q4_o1', label: '0-10% of portfolio', score: 1 },
-      { id: 'q4_o2', label: '10-25% of portfolio', score: 2 },
-      { id: 'q4_o3', label: '25-40% of portfolio', score: 3 },
-      { id: 'q4_o4', label: '40-70% of portfolio', score: 4 },
-      { id: 'q4_o5', label: 'More than 70%', score: 5 },
+      { id: 'q4_o1', label: '0–10% — mostly stable assets', score: 1 },
+      { id: 'q4_o2', label: '10–25% of portfolio', score: 2 },
+      { id: 'q4_o3', label: '25–40% of portfolio', score: 3 },
+      { id: 'q4_o4', label: '40–70% of portfolio', score: 4 },
+      { id: 'q4_o5', label: 'More than 70% — full risk-on', score: 5 },
     ],
   },
   {
     id: 'q5',
-    title: 'Primary objective',
+    title: 'Primary investment objective',
+    description: 'What is the main goal for this portfolio? This shapes how Omeswap\'s AI calibrates routing, alerts, and strategy suggestions.',
     options: [
-      { id: 'q5_o1', label: 'Capital preservation first', score: 1 },
-      { id: 'q5_o2', label: 'Steady growth with low risk', score: 2 },
-      { id: 'q5_o3', label: 'Balanced growth and risk', score: 3 },
-      { id: 'q5_o4', label: 'Growth focused', score: 4 },
-      { id: 'q5_o5', label: 'Aggressive growth maximization', score: 5 },
+      { id: 'q5_o1', label: 'Capital preservation — protect principal first', score: 1 },
+      { id: 'q5_o2', label: 'Steady growth with controlled risk', score: 2 },
+      { id: 'q5_o3', label: 'Balanced growth and risk trade-off', score: 3 },
+      { id: 'q5_o4', label: 'Growth-focused, accept higher volatility', score: 4 },
+      { id: 'q5_o5', label: 'Aggressive maximization — prioritize upside', score: 5 },
     ],
   },
   {
     id: 'q6',
-    title: 'DeFi and crypto experience level',
+    title: 'DeFi & crypto experience',
+    description: 'Your experience level helps us tailor complexity. Beginners get guided flows; experts unlock advanced routing, LP strategies, and automation.',
     options: [
-      { id: 'q6_o1', label: 'None', score: 1 },
-      { id: 'q6_o2', label: 'Beginner', score: 2 },
-      { id: 'q6_o3', label: 'Intermediate', score: 3 },
-      { id: 'q6_o4', label: 'Advanced', score: 4 },
-      { id: 'q6_o5', label: 'Expert / professional', score: 5 },
+      { id: 'q6_o1', label: 'None — completely new to crypto', score: 1 },
+      { id: 'q6_o2', label: 'Beginner — basic buys/sells only', score: 2 },
+      { id: 'q6_o3', label: 'Intermediate — swaps, DEXs, yield', score: 3 },
+      { id: 'q6_o4', label: 'Advanced — DeFi protocols, LP, options', score: 4 },
+      { id: 'q6_o5', label: 'Expert — professional or institutional', score: 5 },
     ],
   },
   {
     id: 'q7',
     title: 'Strategy complexity comfort',
+    description: 'How sophisticated are the trading strategies you\'re comfortable running? This affects AI recommendations and automation features shown to you.',
     options: [
-      { id: 'q7_o1', label: 'Simple spot only', score: 1 },
-      { id: 'q7_o2', label: 'Mostly simple spot', score: 2 },
-      { id: 'q7_o3', label: 'Mix of spot and simple DeFi', score: 3 },
-      { id: 'q7_o4', label: 'Active strategies with automation', score: 4 },
-      { id: 'q7_o5', label: 'Advanced active and complex strategies', score: 5 },
+      { id: 'q7_o1', label: 'Simple spot buys/sells only', score: 1 },
+      { id: 'q7_o2', label: 'Mostly spot with occasional limit orders', score: 2 },
+      { id: 'q7_o3', label: 'Spot + simple DeFi (staking, liquidity)', score: 3 },
+      { id: 'q7_o4', label: 'Active strategies with some automation', score: 4 },
+      { id: 'q7_o5', label: 'Advanced — arbitrage, complex DeFi, bots', score: 5 },
     ],
   },
   {
     id: 'q8',
-    title: 'Liquidity need in next 12 months',
+    title: 'Liquidity needs in the next 12 months',
+    description: 'Do you expect to withdraw from this portfolio in the near term? Needing funds soon limits how much risk you can afford to take.',
     options: [
-      { id: 'q8_o1', label: 'Need most funds readily available', score: 1 },
+      { id: 'q8_o1', label: 'Need most funds readily accessible', score: 1 },
       { id: 'q8_o2', label: 'Need a large portion available', score: 2 },
       { id: 'q8_o3', label: 'Need around half available', score: 3 },
-      { id: 'q8_o4', label: 'Need a small portion available', score: 4 },
-      { id: 'q8_o5', label: 'No near-term liquidity need', score: 5 },
+      { id: 'q8_o4', label: 'Need only a small portion available', score: 4 },
+      { id: 'q8_o5', label: 'No near-term liquidity needs at all', score: 5 },
     ],
   },
 ]
