@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import TopBar from "@/components/agent-builder/canvas/TopBar";
 import NodePalette from "@/components/agent-builder/canvas/NodePalette";
 import FlowCanvas from "@/components/agent-builder/canvas/FlowCanvas";
@@ -63,7 +64,10 @@ function resolveNodeType(block: {
   return null;
 }
 
-export default function AgentBuilderPage() {
+function AgentBuilderContent() {
+  const searchParams = useSearchParams();
+  const publishMode =
+    searchParams.get("mode") === "indicator" ? "indicator" : "strategy";
   const { chartOpen, setChartOpen, addNodeToCanvas, appendEdges, agentOpen } =
     useStore();
   const { setAgentBuilderMode } = useChatContext();
@@ -153,7 +157,7 @@ export default function AgentBuilderPage() {
         </div>
 
         <div className="relative z-10 flex flex-col h-full overflow-hidden text-foreground">
-          <TopBar />
+          <TopBar publishMode={publishMode} />
           <div className="flex flex-1 min-h-0">
             <NodePalette />
             <FlowCanvas />
@@ -165,5 +169,19 @@ export default function AgentBuilderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AgentBuilderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen pt-28 text-center text-zinc-500 text-sm">
+          Loading builder…
+        </div>
+      }
+    >
+      <AgentBuilderContent />
+    </Suspense>
   );
 }

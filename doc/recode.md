@@ -443,3 +443,15 @@ To roll back the SSR localStorage fix without rolling back the rest:
 
 ### Minimal rollback: just restore contracts/config.ts
 If the registry is not the problem but `contracts/config.ts` broke something, restore it to the old hardcoded version and remove the `lib/chain-registry/` imports. All consumer files (hooks, components) import from `@/contracts/config` and will pick up the restored values automatically.
+
+### [2026-04-27 09:22:00 Z] agent=copilot user=ansu555 branch=market_place
+- upgrade_paths: app/api/creator/indicators/[id]/publish/route.ts, app/api/creator/strategies/[id]/publish/route.ts, lib/onboarding/risk-score.ts, hooks/use-toast.ts
+- upgrade_summary: Fixed strategy/indicator publish version bump when Supabase returns null rows; added `lib/onboarding/risk-score` for onboarding form; fixed `hooks/use-toast` import casing to match `userForm` folder. Ran `graphify update .` after changes.
+
+### [2026-04-27 12:00:00 Z] agent=copilot user=ansu555 branch=market_place
+- upgrade_paths: lib/supabase/server.ts, app/api/marketplace/indicators/route.ts, app/api/marketplace/strategies/route.ts, app/api/activations/route.ts, app/api/marketplace/bookmarks/route.ts
+- upgrade_summary: Added `tryCreateSupabaseAdminClient` so marketplace list and library GET routes return empty collections when Supabase URL/service key are unset (fixes 500 on `/api/marketplace/indicators?palette=1` in local dev). Mutations still require configured DB.
+
+### [2026-04-27 14:30:00 Z] agent=copilot user=ansu555 branch=market_place
+- upgrade_paths: lib/marketplace/supabase-read-fallback.ts, app/api/marketplace/indicators/route.ts, app/api/marketplace/strategies/route.ts, app/api/creator/dashboard/route.ts, app/(app)/creator/page.tsx, components/layout/header.tsx
+- upgrade_summary: Return empty marketplace lists when Supabase reports missing relations (migration not applied); hardened indicator dependency counts; `/creator` redirects to `/agent-builder` and Creator nav item removed so publishing stays on Agent builder. Dashboard API degrades gracefully without DB.

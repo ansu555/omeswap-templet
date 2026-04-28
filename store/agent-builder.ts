@@ -63,7 +63,11 @@ interface BotStore {
 
   // Node instances (type-safe execution layer)
   nodeInstances: Map<string, BaseNode>;
-  addNodeToCanvas: (type: string, position: { x: number; y: number }) => string;
+  addNodeToCanvas: (
+    type: string,
+    position: { x: number; y: number },
+    initialConfig?: Record<string, unknown>,
+  ) => string;
   appendEdges: (edges: Edge[]) => void;
   removeNode: (id: string) => void;
   updateNodeConfig: (id: string, config: Record<string, unknown>) => void;
@@ -257,9 +261,12 @@ export const useStore = create<BotStore>((set, get) => ({
       return { edges };
     }),
 
-  addNodeToCanvas: (type, position) => {
+  addNodeToCanvas: (type, position, initialConfig) => {
     const id = `${type}_${++nodeCounter}`;
     const instance = createNodeInstance(type, id);
+    if (initialConfig) {
+      instance.setConfig({ ...instance.config, ...initialConfig });
+    }
 
     const rfNode: Node = {
       id,

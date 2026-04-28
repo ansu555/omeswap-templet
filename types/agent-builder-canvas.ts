@@ -31,6 +31,9 @@ export interface ExecutionContext {
   walletAddress: string | null;
   provider: unknown;
   signer: unknown;
+  /** When set, successful SwapNode writes a marketplace decision receipt */
+  activationId?: string | null;
+  strategyVersionId?: string | null;
   addLog: (msg: string, level?: "info" | "warn" | "error") => void;
   showToast: (message: string, level?: "info" | "warn" | "error") => void;
   addChartMarker: (marker: {

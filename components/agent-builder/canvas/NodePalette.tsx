@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store/agent-builder'
 import { PALETTE_NODES, CATEGORY_LABELS } from '@/lib/agent-builder/nodes/registry'
@@ -9,12 +9,14 @@ import {
   TrendingUp, Wallet, ArrowLeftRight, GitBranch, Bell, Calculator,
   Timer, Repeat2, Target, BellRing, Play, Square, Merge, Clock,
   Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen,
+  Layers,
 } from 'lucide-react'
 import clsx from 'clsx'
 
 const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   TrendingUp, Wallet, ArrowLeftRight, GitBranch, Bell, Calculator,
   Timer, Repeat2, Target, BellRing, Play, Square, Merge, Clock,
+  Layers,
 }
 
 const CATEGORY_ORDER: NodeCategory[] = ['flow', 'data', 'logic', 'action']
@@ -33,9 +35,31 @@ const CATEGORY_HEADER_COLORS: Record<NodeCategory, string> = {
   flow: 'text-purple-400/60',
 }
 
+type ImportRow = {
+  id: string
+  name: string
+  current_version_id: string | null
+}
+
 export default function NodePalette() {
   const { addNodeToCanvas } = useStore()
+  const [importList, setImportList] = useState<ImportRow[]>([])
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/marketplace/indicators?palette=1')
+      .then((r) => r.json())
+      .then((d: { indicators?: ImportRow[] }) => {
+        if (!cancelled) setImportList(d.indicators ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setImportList([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [collapsedCats, setCollapsedCats] = useState<Set<NodeCategory>>(new Set())
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
@@ -304,6 +328,37 @@ export default function NodePalette() {
           >
             No nodes match &ldquo;{search}&rdquo;
           </motion.p>
+        )}
+
+        {importList.some((i) => i.current_version_id) && (
+          <div className="mt-2 border-t border-cyan-500/20 px-2.5 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-cyan-400/70 mb-1.5">
+              Marketplace indicators
+            </p>
+            <div className="space-y-0.5 max-h-40 overflow-y-auto">
+              {importList
+                .filter((i) => i.current_version_id)
+                .map((ind) => (
+                  <button
+                    key={ind.id}
+                    type="button"
+                    onClick={() =>
+                      addNodeToCanvas('subgraph_indicator', {
+                        x: 320 + Math.random() * 80,
+                        y: 220 + Math.random() * 80,
+                      }, {
+                        indicatorVersionId: ind.current_version_id,
+                        displayLabel: ind.name,
+                      })
+                    }
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/10 transition-all text-left"
+                  >
+                    <Layers size={13} className="text-cyan-400 shrink-0" />
+                    <span className="text-[11px] text-white/80 truncate">{ind.name}</span>
+                  </button>
+                ))}
+            </div>
+          </div>
         )}
       </div>
     </motion.aside>
