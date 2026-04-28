@@ -39,6 +39,11 @@ const config: NextConfig = {
         hostname: 'imgproxy-mainnet.routescan.io',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'static-assets.coinbase.com',
+        pathname: '/**',
+      },
     ],
   },
   webpack: (cfg, { isServer, webpack }) => {

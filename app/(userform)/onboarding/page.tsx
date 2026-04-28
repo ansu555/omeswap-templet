@@ -1,62 +1,57 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowLeft, Loader2, RefreshCw, Copy, LogOut, Check } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
+
 
 import {
   RESPONSE_KEYS,
   RISK_QUESTIONNAIRE_VERSION,
   RISK_QUESTIONS,
   type RiskResponses,
+  type ResponseScore,
   computeRiskScore,
   getRiskCategory,
   isValidResponseScore,
   normalizeWalletAddress,
 } from '@/lib/onboarding'
-import { cn } from '@/lib/utils'
+import { BackgroundPaths } from '@/components/layout/background-paths'
+import { OnboardingHero } from '@/components/onboarding/onboarding-hero'
+import { ProgressBar } from '@/components/onboarding/progress-bar'
+import { QuestionnaireStep } from '@/components/onboarding/questionnaire-step'
+import { ReviewStep } from '@/components/onboarding/review-step'
 import { useWallet } from '@/hooks/use-wallet'
+import { ExploreSkeleton } from '@/components/explore/ExploreSkeleton'
+
+import { cn } from '@/lib/utils'
 
 type OnboardingStatusResponse =
   | { exists: false }
-  | {
-      exists: true
-      riskScore: number
-      riskCategory: 'conservative' | 'balanced' | 'aggressive'
-    }
+  | { exists: true; riskScore: number; riskCategory: 'conservative' | 'balanced' | 'aggressive' }
 
-function hasCompleteResponses(
-  responses: Partial<RiskResponses>,
-): responses is RiskResponses {
-  return RESPONSE_KEYS.every((key) => isValidResponseScore(responses[key]))
-}
-
-function getCategoryLabel(category: 'conservative' | 'balanced' | 'aggressive') {
-  switch (category) {
-    case 'conservative':
-      return 'Conservative'
-    case 'balanced':
-      return 'Balanced'
-    case 'aggressive':
-      return 'Aggressive'
-  }
+function hasCompleteResponses(r: Partial<RiskResponses>): r is RiskResponses {
+  return RESPONSE_KEYS.every((key) => isValidResponseScore(r[key]))
 }
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { address, isConnected } = useWallet()
-
   const [statusLoading, setStatusLoading] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [statusCheckedAddress, setStatusCheckedAddress] = useState<string | null>(
-    null,
-  )
+  const [statusCheckedAddress, setStatusCheckedAddress] = useState<string | null>(null)
   const [responses, setResponses] = useState<Partial<RiskResponses>>({})
   const [notes, setNotes] = useState('')
   const [step, setStep] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Timer ref for auto-advance
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const { address, isConnected, disconnect } = useWallet()
 
   const normalizedAddress = useMemo(
     () => (address ? normalizeWalletAddress(address) : ''),
@@ -64,9 +59,7 @@ export default function OnboardingPage() {
   )
 
   const fetchStatus = useCallback(async () => {
-    if (!normalizedAddress) {
-      return
-    }
+    if (!normalizedAddress) return
 
     setStatusLoading(true)
     setStatusError(null)
@@ -77,9 +70,7 @@ export default function OnboardingPage() {
         { method: 'GET', cache: 'no-store' },
       )
 
-      if (!response.ok) {
-        throw new Error('Unable to verify onboarding status.')
-      }
+      if (!response.ok) throw new Error('Unable to verify onboarding status.')
 
       const data = (await response.json()) as OnboardingStatusResponse
 
@@ -103,59 +94,54 @@ export default function OnboardingPage() {
       setStatusLoading(false)
       return
     }
-
     void fetchStatus()
   }, [fetchStatus, isConnected, normalizedAddress])
 
+  // Cleanup advance timer on unmount
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current)
+    }
+  }, [])
+
   const answeredCount = useMemo(
-    () =>
-      RESPONSE_KEYS.reduce(
-        (count, key) => (isValidResponseScore(responses[key]) ? count + 1 : count),
-        0,
-      ),
+    () => RESPONSE_KEYS.reduce((n, key) => (isValidResponseScore(responses[key]) ? n + 1 : n), 0),
     [responses],
   )
 
   const isReviewStep = step >= RISK_QUESTIONS.length
   const activeQuestion = isReviewStep ? null : RISK_QUESTIONS[step]
   const activeScore = activeQuestion ? responses[activeQuestion.id] : undefined
-  const hasCurrentAnswer = activeQuestion
-    ? isValidResponseScore(activeScore)
-    : hasCompleteResponses(responses)
 
-  const computedScore = hasCompleteResponses(responses)
-    ? computeRiskScore(responses)
-    : null
-  const computedCategory = computedScore === null ? null : getRiskCategory(computedScore)
+  const computedScore = hasCompleteResponses(responses) ? computeRiskScore(responses) : null
+  const computedCategory = computedScore !== null ? getRiskCategory(computedScore) : null
 
-  const onSelectScore = (score: 1 | 2 | 3 | 4 | 5) => {
-    if (!activeQuestion) {
-      return
-    }
+  const onSelectScore = useCallback(
+    (score: ResponseScore) => {
+      if (!activeQuestion) return
 
-    setResponses((previous) => ({
-      ...previous,
-      [activeQuestion.id]: score,
-    }))
-    setSubmitError(null)
-  }
+      // Cancel any pending advance (e.g. if user re-clicks quickly)
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current)
 
-  const onNext = () => {
-    if (step < RISK_QUESTIONS.length) {
-      setStep((previous) => previous + 1)
-    }
-  }
+      setResponses((prev) => ({ ...prev, [activeQuestion.id]: score }))
+      setSubmitError(null)
 
-  const onBack = () => {
-    if (step > 0) {
-      setStep((previous) => previous - 1)
-    }
-  }
+      // Auto-advance after brief visual feedback
+      advanceTimerRef.current = setTimeout(() => {
+        setStep((prev) => Math.min(prev + 1, RISK_QUESTIONS.length))
+      }, 380)
+    },
+    [activeQuestion],
+  )
 
-  const onSubmit = async () => {
-    if (!normalizedAddress || !hasCompleteResponses(responses) || isSubmitting) {
-      return
-    }
+  const onBack = useCallback(() => {
+    // Cancel pending auto-advance before going back
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current)
+    setStep((prev) => Math.max(prev - 1, 0))
+  }, [])
+
+  const onSubmit = useCallback(async () => {
+    if (!normalizedAddress || !hasCompleteResponses(responses) || isSubmitting) return
 
     setIsSubmitting(true)
     setSubmitError(null)
@@ -163,9 +149,7 @@ export default function OnboardingPage() {
     try {
       const response = await fetch('/api/onboarding', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           walletAddress: normalizedAddress,
           responses,
@@ -179,9 +163,7 @@ export default function OnboardingPage() {
         return
       }
 
-      if (!response.ok) {
-        throw new Error('Unable to submit onboarding.')
-      }
+      if (!response.ok) throw new Error('Unable to submit onboarding.')
 
       router.replace('/explore')
     } catch {
@@ -189,200 +171,174 @@ export default function OnboardingPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [normalizedAddress, responses, notes, isSubmitting, router])
 
+  const handleCopyAddress = useCallback(() => {
+    if (!address) return
+    void navigator.clipboard.writeText(address)
+    setCopied(true)
+    toast({
+      title: 'Address copied',
+      description: 'Wallet address copied to clipboard',
+    })
+    setTimeout(() => setCopied(false), 2000)
+  }, [address])
+
+  const handleDisconnect = useCallback(() => {
+    disconnect()
+    router.push('/')
+  }, [disconnect, router])
+
+
+  // ── Disconnected: show hero ──────────────────────────────────────
   if (!isConnected || !normalizedAddress) {
-    return (
-      <div className="min-h-screen bg-black text-white px-4 py-10">
-        <div className="mx-auto w-full max-w-2xl rounded-3xl border border-white/10 bg-white/5 p-8 md:p-10">
-          <p className="text-sm uppercase tracking-[0.2em] text-primary/80">
-            Omeswap onboarding
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold">Connect wallet to continue</h1>
-          <p className="mt-4 text-white/70">
-            Onboarding is saved once per wallet. Connect to check your profile.
-          </p>
-          <div className="mt-8">
-            <ConnectButton />
-          </div>
-        </div>
-      </div>
-    )
+    return <OnboardingHero />
   }
 
-  if (statusLoading || statusCheckedAddress !== normalizedAddress) {
-    return (
-      <div className="min-h-screen bg-black text-white px-4 py-10">
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-8">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <p className="text-white/80">Checking onboarding status for this wallet...</p>
-        </div>
-      </div>
-    )
+  // ── Checking status ──────────────────────────────────────────────
+  if (statusLoading || (isConnected && normalizedAddress && statusCheckedAddress !== normalizedAddress)) {
+    return <ExploreSkeleton />
   }
 
+  // ── Status error ─────────────────────────────────────────────────
   if (statusError) {
     return (
-      <div className="min-h-screen bg-black text-white px-4 py-10">
-        <div className="mx-auto w-full max-w-2xl rounded-3xl border border-red-400/30 bg-red-500/10 p-8">
-          <h1 className="text-2xl font-semibold">Status check failed</h1>
-          <p className="mt-3 text-red-100/90">{statusError}</p>
-          <button
-            type="button"
-            onClick={() => {
-              void fetchStatus()
-            }}
-            className="mt-6 rounded-xl bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/30"
+      <div className="relative min-h-screen overflow-hidden bg-background">
+        <BackgroundPaths />
+        <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md space-y-5 rounded-2xl border border-red-400/20 bg-red-400/5 p-7"
+            style={{ backdropFilter: 'blur(12px)' }}
           >
-            Retry
-          </button>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Status check failed</h2>
+              <p className="mt-2 text-sm text-red-300/80">{statusError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { void fetchStatus() }}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-400/12"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </button>
+          </motion.div>
         </div>
       </div>
     )
   }
 
+  // ── Questionnaire ────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-10">
-      <div className="mx-auto w-full max-w-3xl rounded-3xl border border-white/10 bg-white/5 p-6 md:p-10">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-primary/80">
-              Omeswap risk onboarding
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold md:text-3xl">
-              {isReviewStep ? 'Review and submit' : 'Risk profile questionnaire'}
-            </h1>
-            <p className="mt-2 text-sm text-white/70">
-              Wallet: {normalizedAddress.slice(0, 6)}...{normalizedAddress.slice(-4)}
-            </p>
-          </div>
-          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70">
-            {isReviewStep
-              ? `${RISK_QUESTIONS.length}/${RISK_QUESTIONS.length}`
-              : `${step + 1}/${RISK_QUESTIONS.length}`}
-          </span>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      <BackgroundPaths />
 
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${(answeredCount / RISK_QUESTIONS.length) * 100}%` }}
-          />
-        </div>
+      {/* Ambient glow */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 opacity-20"
+        style={{ background: 'radial-gradient(ellipse, hsl(262 83% 71% / 0.3) 0%, transparent 70%)' }}
+      />
 
-        {!isReviewStep && activeQuestion && (
-          <section className="mt-8">
-            <p className="text-sm font-medium text-white/60">
-              Question {step + 1} of {RISK_QUESTIONS.length}
-            </p>
-            <h2 className="mt-2 text-xl font-semibold">{activeQuestion.title}</h2>
-
-            <div className="mt-6 space-y-3">
-              {activeQuestion.options.map((option) => {
-                const selected = option.score === activeScore
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => onSelectScore(option.score)}
-                    className={cn(
-                      'w-full rounded-2xl border px-4 py-4 text-left transition',
-                      selected
-                        ? 'border-primary bg-primary/20 text-primary'
-                        : 'border-white/10 bg-white/5 hover:border-white/25',
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="text-sm md:text-base">{option.label}</span>
-                      <span className="rounded-full border border-current/30 px-2 py-0.5 text-xs">
-                        {option.score}
-                      </span>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {isReviewStep && (
-          <section className="mt-8 space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-sm text-white/60">Risk score preview</p>
-              <p className="mt-2 text-3xl font-semibold">
-                {computedScore ?? '--'}
-                <span className="ml-2 text-sm text-white/60">/ 100</span>
-              </p>
-              <p className="mt-2 text-sm text-white/70">
-                Category:{' '}
-                <span className="font-medium text-white">
-                  {computedCategory ? getCategoryLabel(computedCategory) : '--'}
-                </span>
-              </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="notes"
-                className="mb-2 block text-sm font-medium text-white/80"
-              >
-                Notes / goals (optional)
-              </label>
-              <textarea
-                id="notes"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Share your investment goals or constraints..."
-                rows={4}
-                maxLength={1000}
-                className="w-full resize-y rounded-2xl border border-white/15 bg-black/40 px-4 py-3 text-sm outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            {submitError && <p className="text-sm text-red-300">{submitError}</p>}
-          </section>
-        )}
-
-        <div className="mt-10 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={step === 0 || isSubmitting}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-2xl">
+          {/* Top bar */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="mb-10 space-y-5"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium tracking-widest text-white/25 uppercase">
+                Omeswap
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCopyAddress}
+                  className="group flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1 transition-all hover:border-white/10 hover:bg-white/[0.04]"
+                >
+                  <span className="font-mono text-[10px] text-white/40 transition-colors group-hover:text-white/60">
+                    {normalizedAddress.slice(0, 6)}…{normalizedAddress.slice(-4)}
+                  </span>
+                  {copied ? (
+                    <Check className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-white/20 transition-colors group-hover:text-white/40" />
+                  )}
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1 transition-all hover:border-red-500/20 hover:bg-red-500/5 group"
+                  title="Disconnect Wallet"
+                >
+                  <LogOut className="h-3 w-3 text-white/20 transition-colors group-hover:text-red-400" />
+                </button>
+              </div>
+            </div>
 
-          {!isReviewStep ? (
-            <button
-              type="button"
-              onClick={onNext}
-              disabled={!hasCurrentAnswer || isSubmitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-black transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                void onSubmit()
-              }}
-              disabled={!hasCompleteResponses(responses) || isSubmitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-black transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Submit onboarding'
-              )}
-            </button>
-          )}
+            <ProgressBar answeredCount={answeredCount} total={RISK_QUESTIONS.length} />
+          </motion.div>
+
+          {/* Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="relative overflow-hidden rounded-3xl border border-white/8 p-7 md:p-9"
+            style={{
+              background: 'hsl(0 0% 100% / 0.025)',
+              backdropFilter: 'blur(16px)',
+              boxShadow:
+                '0 0 0 1px hsl(262 83% 71% / 0.06), 0 20px 40px hsl(270 40% 4% / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
+            }}
+          >
+            {!isReviewStep && activeQuestion ? (
+              <QuestionnaireStep
+                question={activeQuestion}
+                selectedScore={activeScore as ResponseScore | undefined}
+                questionIndex={step}
+                totalQuestions={RISK_QUESTIONS.length}
+                onSelect={onSelectScore}
+              />
+            ) : (
+              <ReviewStep
+                riskScore={computedScore}
+                riskCategory={computedCategory}
+                notes={notes}
+                onNotesChange={setNotes}
+                onSubmit={() => { void onSubmit() }}
+                isSubmitting={isSubmitting}
+                submitError={submitError}
+                onBack={onBack}
+              />
+            )}
+
+            {/* Back button for question steps */}
+            {!isReviewStep && (
+              <div className="mt-8 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  disabled={step === 0}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.025]',
+                    'px-4 py-2.5 text-sm text-white/50 transition-all duration-150',
+                    'hover:border-white/15 hover:bg-white/[0.04] hover:text-white/70',
+                    'disabled:cursor-not-allowed disabled:opacity-25',
+                  )}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </button>
+
+                <p className="text-xs text-white/20">
+                  {activeScore !== undefined ? 'Auto-advancing…' : 'Select an option'}
+                </p>
+              </div>
+            )}
+          </motion.div>
         </div>
       </div>
     </div>
