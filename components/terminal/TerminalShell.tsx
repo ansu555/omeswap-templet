@@ -24,6 +24,11 @@ import { DepthTile } from "./tiles/DepthTile";
 import { InfoTile } from "./tiles/InfoTile";
 import { OrderPanelTile } from "./tiles/OrderPanelTile";
 import { AgentCopilotTile } from "./tiles/AgentCopilotTile";
+import { NewsTile } from "./tiles/NewsTile";
+import { PositionsTile } from "./tiles/PositionsTile";
+import { OrdersTile } from "./tiles/OrdersTile";
+import { HoldersTile } from "./tiles/HoldersTile";
+import { LiquidityTile } from "./tiles/LiquidityTile";
 import { loadUserIndicators } from "@/lib/indicators/userIndicators";
 
 const ResponsiveGridLayout = dynamic(
@@ -51,6 +56,16 @@ function TileBody({ id }: { id: TileId }) {
       return <OrderPanelTile />;
     case "copilot":
       return <AgentCopilotTile />;
+    case "news":
+      return <NewsTile />;
+    case "positions":
+      return <PositionsTile />;
+    case "orders":
+      return <OrdersTile />;
+    case "holders":
+      return <HoldersTile />;
+    case "liquidity":
+      return <LiquidityTile />;
     default:
       return null;
   }
@@ -58,18 +73,18 @@ function TileBody({ id }: { id: TileId }) {
 
 function Tile({ id, onClose }: { id: TileId; onClose: () => void }) {
   return (
-    <div className="grid-tile flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-md shadow-sm">
-      <div className="drag-handle flex items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5 cursor-move select-none">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground/80">
+    <div className="grid-tile flex h-full w-full flex-col overflow-hidden bg-card">
+      <div className="drag-handle flex items-center justify-between gap-2 border-b border-border px-3 py-[5px] cursor-move select-none bg-card">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {TILE_LABELS[id]}
         </span>
         <button
           onClick={onClose}
           onMouseDown={(e) => e.stopPropagation()}
-          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors"
           aria-label={`Close ${TILE_LABELS[id]}`}
         >
-          <X size={12} />
+          <X size={11} />
         </button>
       </div>
       <div className="flex-1 overflow-hidden">
@@ -93,7 +108,7 @@ function AddTileMenu() {
     return (
       <button
         disabled
-        className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground"
+        className="flex items-center gap-1.5 border border-border/50 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground"
       >
         <Plus size={12} /> All tiles mounted
       </button>
@@ -104,12 +119,12 @@ function AddTileMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/60 px-3 py-1.5 text-xs hover:bg-card"
+        className="flex items-center gap-1.5 border border-border bg-card px-3 py-1.5 text-xs hover:bg-muted transition-colors"
       >
         <Plus size={12} /> Add tile
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] border border-border bg-popover p-1 shadow-lg">
           {available.map((id) => (
             <button
               key={id}
@@ -117,7 +132,7 @@ function AddTileMenu() {
                 mountTile(id);
                 setOpen(false);
               }}
-              className="flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-muted"
+              className="flex w-full items-center px-2 py-1.5 text-left text-xs hover:bg-muted"
             >
               {TILE_LABELS[id]}
             </button>
@@ -165,10 +180,10 @@ export function TerminalShell() {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex items-center justify-between border-b border-border/40 px-6 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-lg font-semibold">Terminal</h1>
-          <span className="text-xs text-muted-foreground">
+          <h1 className="text-sm font-semibold tracking-wide uppercase">Terminal</h1>
+          <span className="text-[11px] text-muted-foreground font-mono">
             {activeSymbol.symbol} · {activeSymbol.name}
           </span>
         </div>
@@ -176,22 +191,23 @@ export function TerminalShell() {
           <AddTileMenu />
           <button
             onClick={() => resetLayout()}
-            className="flex items-center gap-1.5 rounded-md border border-border/50 bg-card/60 px-3 py-1.5 text-xs hover:bg-card"
+            className="flex items-center gap-1.5 border border-border bg-card px-3 py-1.5 text-xs hover:bg-muted transition-colors"
           >
-            <RotateCcw size={12} /> Reset layout
+            <RotateCcw size={11} /> Reset
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto px-3 py-3">
+      <div className="flex-1 overflow-auto bg-border">
         <ResponsiveGridLayout
           className="layout"
           layouts={{ lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }}
           breakpoints={BREAKPOINTS}
           cols={COLS}
           rowHeight={ROW_HEIGHT}
-          margin={[10, 10]}
-          containerPadding={[0, 0]}
+          margin={[1, 1]}
+          containerPadding={[1, 1]}
           draggableHandle=".drag-handle"
+          resizeHandles={['s','w','e','n','sw','nw','se','ne']}
           onLayoutChange={onLayoutChange}
         >
           {layout.map((item) => (

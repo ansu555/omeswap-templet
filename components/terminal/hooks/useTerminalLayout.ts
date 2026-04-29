@@ -10,7 +10,7 @@ import {
   useTerminalStore,
 } from "@/store/terminal";
 
-const KEY_PREFIX = "omeswap.terminal.layout.v1.";
+const KEY_PREFIX = "omeswap.terminal.layout.v2.";
 const ANON_KEY = `${KEY_PREFIX}anon`;
 
 type Persisted = {

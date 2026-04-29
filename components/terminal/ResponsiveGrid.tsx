@@ -6,6 +6,7 @@ import {
   verticalCompactor,
   type Layout,
   type LayoutItem,
+  type ResizeHandleAxis,
 } from "react-grid-layout";
 
 export type ResponsiveGridLayoutProps = {
@@ -19,6 +20,7 @@ export type ResponsiveGridLayoutProps = {
   containerPadding?: readonly [number, number];
   draggableHandle?: string;
   preventCollision?: boolean;
+  resizeHandles?: ResizeHandleAxis[];
   onLayoutChange?: (layout: Layout) => void;
 };
 
@@ -29,9 +31,10 @@ export function ResponsiveGridLayout({
   breakpoints,
   cols,
   rowHeight = 36,
-  margin = [10, 10],
-  containerPadding = [0, 0],
+  margin = [1, 1],
+  containerPadding = [1, 1],
   draggableHandle,
+  resizeHandles,
   onLayoutChange,
 }: ResponsiveGridLayoutProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -60,6 +63,7 @@ export function ResponsiveGridLayout({
           containerPadding={containerPadding}
           compactor={verticalCompactor}
           dragConfig={draggableHandle ? { handle: draggableHandle } : undefined}
+          resizeConfig={resizeHandles ? { handles: resizeHandles } : undefined}
           onLayoutChange={onLayoutChange}
         >
           {children}
