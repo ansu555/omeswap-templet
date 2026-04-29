@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "./logo";
-import { Compass, ArrowLeftRight, Wallet, Receipt, Bot } from "lucide-react";
+import { Compass, ArrowLeftRight, LineChart, Wallet, Bot, Receipt } from "lucide-react";
 import { gsap } from "gsap";
 import { WalletConnect } from "@/components/features/wallet";
 import { NavBar } from "@/components/ui/nav-bar";
@@ -11,6 +11,7 @@ import { NavBar } from "@/components/ui/nav-bar";
 const navItems = [
   { name: "Explore", url: "/explore", icon: Compass },
   { name: "Trade", url: "/trade", icon: ArrowLeftRight },
+  { name: "Terminal", url: "/terminal", icon: LineChart },
   { name: "Portfolio", url: "/portfolio", icon: Wallet },
   { name: "Agent", url: "/agent-builder", icon: Bot },
   { name: "Txns", url: "/transactions", icon: Receipt },
