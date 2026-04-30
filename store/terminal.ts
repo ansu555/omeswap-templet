@@ -28,12 +28,7 @@ export type TileId =
   | "depth"
   | "info"
   | "order"
-  | "copilot"
-  | "news"
-  | "positions"
-  | "orders"
-  | "holders"
-  | "liquidity";
+  | "copilot";
 
 export type TileLayoutItem = {
   i: TileId;
@@ -90,18 +85,13 @@ function entryToActiveSymbol(e: WatchlistEntry): ActiveSymbol {
 }
 
 export const DEFAULT_LAYOUT: TileLayoutItem[] = [
-  { i: "watchlist",  x: 0,  y: 0,  w: 2,  h: 14, minW: 2, minH: 6 },
-  { i: "chart",      x: 2,  y: 0,  w: 7,  h: 10, minW: 5, minH: 7 },
-  { i: "trades",     x: 9,  y: 0,  w: 3,  h: 10, minW: 3, minH: 6 },
-  { i: "order",      x: 9,  y: 10, w: 3,  h: 7,  minW: 3, minH: 6 },
-  { i: "depth",      x: 2,  y: 10, w: 4,  h: 7,  minW: 3, minH: 5 },
-  { i: "info",       x: 6,  y: 10, w: 3,  h: 7,  minW: 3, minH: 4 },
-  { i: "positions",  x: 0,  y: 17, w: 4,  h: 7,  minW: 3, minH: 5 },
-  { i: "orders",     x: 4,  y: 17, w: 4,  h: 7,  minW: 3, minH: 5 },
-  { i: "holders",    x: 8,  y: 17, w: 4,  h: 7,  minW: 3, minH: 5 },
-  { i: "news",       x: 0,  y: 24, w: 6,  h: 8,  minW: 4, minH: 5 },
-  { i: "liquidity",  x: 6,  y: 24, w: 6,  h: 8,  minW: 4, minH: 5 },
-  { i: "copilot",    x: 0,  y: 32, w: 12, h: 4,  minW: 6, minH: 3 },
+  { i: "watchlist", x: 0, y: 0, w: 2, h: 14, minW: 2, minH: 6 },
+  { i: "chart", x: 2, y: 0, w: 7, h: 10, minW: 5, minH: 7 },
+  { i: "trades", x: 9, y: 0, w: 3, h: 10, minW: 3, minH: 6 },
+  { i: "order", x: 9, y: 10, w: 3, h: 7, minW: 3, minH: 6 },
+  { i: "depth", x: 2, y: 10, w: 4, h: 7, minW: 3, minH: 5 },
+  { i: "info", x: 6, y: 10, w: 3, h: 7, minW: 3, minH: 4 },
+  { i: "copilot", x: 0, y: 17, w: 12, h: 4, minW: 6, minH: 3 },
 ];
 
 type TerminalState = {
@@ -178,24 +168,14 @@ export const ALL_TILE_IDS: TileId[] = [
   "info",
   "order",
   "copilot",
-  "news",
-  "positions",
-  "orders",
-  "holders",
-  "liquidity",
 ];
 
 export const TILE_LABELS: Record<TileId, string> = {
-  chart:     "Chart",
+  chart: "Chart",
   watchlist: "Watchlist",
-  trades:    "Trades",
-  depth:     "Pool Depth",
-  info:      "Token Info",
-  order:     "Order Panel",
-  copilot:   "Agent Co-pilot",
-  news:      "News",
-  positions: "My Positions",
-  orders:    "Orders",
-  holders:   "Holders",
-  liquidity: "Liquidity Depth",
+  trades: "Trades",
+  depth: "Pool Depth",
+  info: "Token Info",
+  order: "Order Panel",
+  copilot: "Agent Co-pilot",
 };

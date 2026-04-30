@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, RefreshCw, Copy, LogOut, Check } from 'lucide-react'
+import { ArrowLeft, Loader2, RefreshCw, Copy, LogOut, Check } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 
