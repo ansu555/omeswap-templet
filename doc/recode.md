@@ -455,3 +455,7 @@ If the registry is not the problem but `contracts/config.ts` broke something, re
 ### [2026-04-27 14:30:00 Z] agent=copilot user=ansu555 branch=market_place
 - upgrade_paths: lib/marketplace/supabase-read-fallback.ts, app/api/marketplace/indicators/route.ts, app/api/marketplace/strategies/route.ts, app/api/creator/dashboard/route.ts, app/(app)/creator/page.tsx, components/layout/header.tsx
 - upgrade_summary: Return empty marketplace lists when Supabase reports missing relations (migration not applied); hardened indicator dependency counts; `/creator` redirects to `/agent-builder` and Creator nav item removed so publishing stays on Agent builder. Dashboard API degrades gracefully without DB.
+
+### [2026-05-02 13:30:00 Z] agent=claude user=ansu555 branch=akash
+- upgrade_paths: components/layout/header.tsx, doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Completed merge of `terminal` into `akash`; conflict resolution used akash (`ours`) for overlapping header, graphify artifacts, and `doc/recode.md`.
