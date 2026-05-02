@@ -41,6 +41,10 @@ const config: Config = {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'
 				},
+				panel: 'hsl(var(--panel))',
+				'panel-hover': 'hsl(var(--panel-hover))',
+				bull: 'hsl(var(--bull))',
+				bear: 'hsl(var(--bear))',
 				success: {
 					DEFAULT: 'hsl(var(--success))',
 					foreground: 'hsl(var(--success-foreground))'
