@@ -459,3 +459,7 @@ If the registry is not the problem but `contracts/config.ts` broke something, re
 ### [2026-05-02 13:30:00 Z] agent=claude user=ansu555 branch=akash
 - upgrade_paths: components/layout/header.tsx, doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
 - upgrade_summary: Completed merge of `terminal` into `akash`; conflict resolution used akash (`ours`) for overlapping header, graphify artifacts, and `doc/recode.md`.
+
+### [2026-05-02 13:35:00 Z] agent=claude user=ansu555 branch=akash
+- upgrade_paths: graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Ran `graphify update .` after session changes to refresh AST graph outputs.
