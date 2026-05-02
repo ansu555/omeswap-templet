@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import {
   Bitcoin,
   Camera,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ListFilter,
@@ -17,9 +18,11 @@ import {
   LineSeries,
   type CandlestickData,
   type HistogramData,
+  type HistogramSeriesPartialOptions,
   type IChartApi,
   type ISeriesApi,
   type LineData,
+  type LineSeriesPartialOptions,
   type UTCTimestamp,
 } from "lightweight-charts";
 
@@ -80,10 +83,19 @@ type BinanceKlineMessage = {
 const SYMBOL = "BTCUSDT";
 const HISTORY_LIMIT = 240;
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
-const INDICATORS = ["EMA 20", "SMA 50", "VWAP"] as const;
+const INDICATORS = [
+  { key: "EMA 20", label: "EMA" },
+  { key: "SMA 50", label: "SMA" },
+  { key: "WMA 20", label: "WMA" },
+  { key: "VWAP", label: "VWAP" },
+  { key: "BB 20", label: "BB" },
+  { key: "RSI 14", label: "RSI" },
+  { key: "MACD", label: "MACD" },
+  { key: "VOL", label: "VOL" },
+] as const;
 
 type ChartInterval = (typeof INTERVALS)[number];
-type IndicatorName = (typeof INDICATORS)[number];
+type IndicatorName = (typeof INDICATORS)[number]["key"];
 
 const chartColors = {
   background: "hsl(270 40% 4%)",
@@ -103,13 +115,28 @@ export function Chart() {
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const emaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const smaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const wmaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const vwapSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bollingerUpperRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bollingerMiddleRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bollingerLowerRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiOverboughtRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiOversoldRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdSignalRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdHistogramRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const candlesRef = useRef<BtcCandle[]>([]);
   const [interval, setInterval] = useState<ChartInterval>("1m");
   const [enabledIndicators, setEnabledIndicators] = useState<Record<IndicatorName, boolean>>({
     "EMA 20": true,
     "SMA 50": true,
+    "WMA 20": true,
     VWAP: true,
+    "BB 20": true,
+    "RSI 14": true,
+    MACD: true,
+    VOL: true,
   });
   const [stats, setStats] = useState<BtcStats>({
     mark: 0,
@@ -124,14 +151,108 @@ export function Chart() {
   const [status, setStatus] = useState<"loading" | "live" | "offline">("loading");
   const [utcTime, setUtcTime] = useState("");
   const [bottomTab, setBottomTab] = useState("Positions (0)");
+  const [indicatorMenuOpen, setIndicatorMenuOpen] = useState(false);
 
   const syncIndicatorSeries = (
     candles: BtcCandle[],
     indicators: Record<IndicatorName, boolean>,
   ) => {
-    emaSeriesRef.current?.setData(indicators["EMA 20"] ? calculateEma(candles, 20) : []);
-    smaSeriesRef.current?.setData(indicators["SMA 50"] ? calculateSma(candles, 50) : []);
-    vwapSeriesRef.current?.setData(indicators.VWAP ? calculateVwap(candles) : []);
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    syncOptionalLine(chart, emaSeriesRef, indicators["EMA 20"], {
+      color: "hsl(43 96% 56%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(indicators["EMA 20"] ? calculateEma(candles, 20) : []);
+
+    syncOptionalLine(chart, smaSeriesRef, indicators["SMA 50"], {
+      color: "hsl(203 90% 62%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(indicators["SMA 50"] ? calculateSma(candles, 50) : []);
+
+    syncOptionalLine(chart, wmaSeriesRef, indicators["WMA 20"], {
+      color: "hsl(25 95% 65%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(indicators["WMA 20"] ? calculateWma(candles, 20) : []);
+
+    syncOptionalLine(chart, vwapSeriesRef, indicators.VWAP, {
+      color: "hsl(326 90% 70%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(indicators.VWAP ? calculateVwap(candles) : []);
+
+    const bands = indicators["BB 20"] ? calculateBollingerBands(candles, 20, 2) : null;
+    syncOptionalLine(chart, bollingerUpperRef, indicators["BB 20"], {
+      color: "hsl(262 83% 71% / 0.7)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(bands?.upper ?? []);
+    syncOptionalLine(chart, bollingerMiddleRef, indicators["BB 20"], {
+      color: "hsl(262 83% 71% / 0.35)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(bands?.middle ?? []);
+    syncOptionalLine(chart, bollingerLowerRef, indicators["BB 20"], {
+      color: "hsl(262 83% 71% / 0.7)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })?.setData(bands?.lower ?? []);
+
+    const rsi = indicators["RSI 14"] ? calculateRsi(candles, 14) : [];
+    const rsiGuide = rsi.length ? makeGuideLines(rsi, 70, 30) : { high: [], low: [] };
+    syncOptionalLine(chart, rsiSeriesRef, indicators["RSI 14"], {
+      color: "hsl(142 76% 58%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+    }, 1)?.setData(rsi);
+    syncOptionalLine(chart, rsiOverboughtRef, indicators["RSI 14"], {
+      color: "hsl(0 72% 71% / 0.55)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+    }, 1)?.setData(rsiGuide.high);
+    syncOptionalLine(chart, rsiOversoldRef, indicators["RSI 14"], {
+      color: "hsl(164 80% 54% / 0.55)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+    }, 1)?.setData(rsiGuide.low);
+
+    const macd = indicators.MACD ? calculateMacd(candles) : { macd: [], signal: [], histogram: [] };
+    syncOptionalLine(chart, macdSeriesRef, indicators.MACD, {
+      color: "hsl(203 90% 62%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    }, 2)?.setData(macd.macd);
+    syncOptionalLine(chart, macdSignalRef, indicators.MACD, {
+      color: "hsl(43 96% 56%)",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    }, 2)?.setData(macd.signal);
+    syncOptionalHistogram(chart, macdHistogramRef, indicators.MACD, {
+      priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+      priceLineVisible: false,
+      lastValueVisible: false,
+    }, 2)?.setData(macd.histogram);
+
+    volumeSeriesRef.current?.setData(indicators.VOL ? candles.map(toVolume) : []);
+    applyPaneStretch(chart);
   };
 
   useEffect(() => {
@@ -196,25 +317,6 @@ export function Chart() {
       priceFormat: { type: "volume" },
       priceScaleId: "",
     });
-    const emaSeries = chart.addSeries(LineSeries, {
-      color: "hsl(43 96% 56%)",
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-    const smaSeries = chart.addSeries(LineSeries, {
-      color: "hsl(203 90% 62%)",
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-    const vwapSeries = chart.addSeries(LineSeries, {
-      color: "hsl(326 90% 70%)",
-      lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-
     chart.priceScale("").applyOptions({
       scaleMargins: { top: 0.78, bottom: 0 },
       borderColor: "transparent",
@@ -223,9 +325,6 @@ export function Chart() {
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
     volumeSeriesRef.current = volumeSeries;
-    emaSeriesRef.current = emaSeries;
-    smaSeriesRef.current = smaSeries;
-    vwapSeriesRef.current = vwapSeries;
 
     return () => {
       chart.remove();
@@ -234,7 +333,17 @@ export function Chart() {
       volumeSeriesRef.current = null;
       emaSeriesRef.current = null;
       smaSeriesRef.current = null;
+      wmaSeriesRef.current = null;
       vwapSeriesRef.current = null;
+      bollingerUpperRef.current = null;
+      bollingerMiddleRef.current = null;
+      bollingerLowerRef.current = null;
+      rsiSeriesRef.current = null;
+      rsiOverboughtRef.current = null;
+      rsiOversoldRef.current = null;
+      macdSeriesRef.current = null;
+      macdSignalRef.current = null;
+      macdHistogramRef.current = null;
     };
   }, []);
 
@@ -289,12 +398,10 @@ export function Chart() {
         if (disposed) return;
 
         const candles = klines.map(toCandle);
-        const volumes = candles.map(toVolume);
         const last = candles[candles.length - 1] ?? null;
 
         candlesRef.current = candles;
         candleSeriesRef.current?.setData(candles);
-        volumeSeriesRef.current?.setData(volumes);
         syncIndicatorSeries(candles, enabledIndicators);
         chartRef.current?.timeScale().fitContent();
 
@@ -320,7 +427,7 @@ export function Chart() {
 
           candlesRef.current = upsertCandle(candlesRef.current, liveCandle);
           candleSeriesRef.current?.update(liveCandle);
-          volumeSeriesRef.current?.update(toVolume(liveCandle));
+          if (enabledIndicators.VOL) volumeSeriesRef.current?.update(toVolume(liveCandle));
           syncIndicatorSeries(candlesRef.current, enabledIndicators);
           setLatestCandle(liveCandle);
           setStats((current) => ({
@@ -398,8 +505,8 @@ export function Chart() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 px-3 h-9 border-b border-border text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2 px-3 h-9 border-b border-border text-xs text-muted-foreground">
+        <div className="flex items-center gap-1 shrink-0">
           {INTERVALS.map((value) => (
             <button
               key={value}
@@ -415,27 +522,42 @@ export function Chart() {
         <button className="hover:text-foreground" aria-label="Chart settings">
           <ListFilter className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-1">
-          {INDICATORS.map((name) => (
-            <button
-              key={name}
-              onClick={() =>
-                setEnabledIndicators((current) => ({
-                  ...current,
-                  [name]: !current[name],
-                }))
-              }
-              className={`h-6 px-2 rounded ${
-                enabledIndicators[name]
-                  ? "bg-panel text-foreground border border-border"
-                  : "hover:text-foreground hover:bg-panel"
-              }`}
-            >
-              {name}
-            </button>
-          ))}
+
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setIndicatorMenuOpen((current) => !current)}
+            className="flex h-6 items-center gap-1 rounded border border-border bg-panel px-2 text-foreground hover:bg-panel-hover"
+          >
+            Indicators
+            <span className="text-muted-foreground">{activeIndicatorCount(enabledIndicators)}</span>
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          {indicatorMenuOpen ? (
+            <div className="absolute left-0 top-8 z-50 w-44 rounded-md border border-border bg-background p-1 shadow-xl">
+              {INDICATORS.map((indicator) => (
+                <button
+                  key={indicator.key}
+                  onClick={() =>
+                    setEnabledIndicators((current) => ({
+                      ...current,
+                      [indicator.key]: !current[indicator.key],
+                    }))
+                  }
+                  className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-panel"
+                >
+                  <span>{indicator.key}</span>
+                  <span
+                    className={`h-3 w-3 rounded-sm border ${
+                      enabledIndicators[indicator.key] ? "border-primary bg-primary" : "border-border bg-transparent"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
-        <span className="ml-auto flex items-center gap-1.5">
+
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
               status === "live" ? "bg-bull animate-pulse" : status === "loading" ? "bg-primary" : "bg-bear"
@@ -560,6 +682,66 @@ function BottomHeader({ label, value, tone = "text-foreground" }: { label: strin
   );
 }
 
+function syncOptionalLine(
+  chart: IChartApi,
+  ref: MutableRefObject<ISeriesApi<"Line"> | null>,
+  enabled: boolean,
+  options: LineSeriesPartialOptions,
+  paneIndex = 0,
+) {
+  if (!enabled) {
+    removeSeries(chart, ref);
+    return null;
+  }
+
+  if (!ref.current) {
+    ref.current = chart.addSeries(LineSeries, options, paneIndex);
+  }
+
+  return ref.current;
+}
+
+function syncOptionalHistogram(
+  chart: IChartApi,
+  ref: MutableRefObject<ISeriesApi<"Histogram"> | null>,
+  enabled: boolean,
+  options: HistogramSeriesPartialOptions,
+  paneIndex = 0,
+) {
+  if (!enabled) {
+    removeSeries(chart, ref);
+    return null;
+  }
+
+  if (!ref.current) {
+    ref.current = chart.addSeries(HistogramSeries, options, paneIndex);
+  }
+
+  return ref.current;
+}
+
+function removeSeries<T extends "Line" | "Histogram">(
+  chart: IChartApi,
+  ref: MutableRefObject<ISeriesApi<T> | null>,
+) {
+  if (ref.current) {
+    chart.removeSeries(ref.current);
+    ref.current = null;
+  }
+}
+
+function applyPaneStretch(chart: IChartApi) {
+  const panes = chart.panes();
+
+  panes[0]?.setStretchFactor(7);
+  panes[1]?.setStretchFactor(1.6);
+  panes[2]?.setStretchFactor(1.6);
+}
+
+function activeIndicatorCount(indicators: Record<IndicatorName, boolean>) {
+  return Object.values(indicators).filter(Boolean).length;
+}
+
 function toCandle(kline: BinanceKline): BtcCandle {
   return {
     time: Math.floor(kline[0] / 1000) as UTCTimestamp,
@@ -635,6 +817,108 @@ function calculateEma(candles: BtcCandle[], period: number): LineData<UTCTimesta
   return data;
 }
 
+function calculateWma(candles: BtcCandle[], period: number): LineData<UTCTimestamp>[] {
+  if (candles.length < period) return [];
+
+  const denominator = (period * (period + 1)) / 2;
+  const data: LineData<UTCTimestamp>[] = [];
+
+  for (let index = period - 1; index < candles.length; index += 1) {
+    let weighted = 0;
+    for (let offset = 0; offset < period; offset += 1) {
+      weighted += candles[index - offset].close * (period - offset);
+    }
+    data.push({ time: candles[index].time, value: weighted / denominator });
+  }
+
+  return data;
+}
+
+function calculateBollingerBands(candles: BtcCandle[], period: number, stdDev: number) {
+  const middle: LineData<UTCTimestamp>[] = [];
+  const upper: LineData<UTCTimestamp>[] = [];
+  const lower: LineData<UTCTimestamp>[] = [];
+
+  if (candles.length < period) return { middle, upper, lower };
+
+  for (let index = period - 1; index < candles.length; index += 1) {
+    const window = candles.slice(index - period + 1, index + 1);
+    const mean = window.reduce((sum, candle) => sum + candle.close, 0) / period;
+    const variance = window.reduce((sum, candle) => sum + (candle.close - mean) ** 2, 0) / period;
+    const band = Math.sqrt(variance) * stdDev;
+    const time = candles[index].time;
+
+    middle.push({ time, value: mean });
+    upper.push({ time, value: mean + band });
+    lower.push({ time, value: mean - band });
+  }
+
+  return { middle, upper, lower };
+}
+
+function calculateRsi(candles: BtcCandle[], period: number): LineData<UTCTimestamp>[] {
+  if (candles.length <= period) return [];
+
+  const data: LineData<UTCTimestamp>[] = [];
+  let gain = 0;
+  let loss = 0;
+
+  for (let index = 1; index <= period; index += 1) {
+    const change = candles[index].close - candles[index - 1].close;
+    gain += Math.max(change, 0);
+    loss += Math.max(-change, 0);
+  }
+
+  let avgGain = gain / period;
+  let avgLoss = loss / period;
+  data.push({ time: candles[period].time, value: rsiFromAverages(avgGain, avgLoss) });
+
+  for (let index = period + 1; index < candles.length; index += 1) {
+    const change = candles[index].close - candles[index - 1].close;
+    avgGain = (avgGain * (period - 1) + Math.max(change, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-change, 0)) / period;
+    data.push({ time: candles[index].time, value: rsiFromAverages(avgGain, avgLoss) });
+  }
+
+  return data;
+}
+
+function calculateMacd(candles: BtcCandle[]) {
+  const macd: LineData<UTCTimestamp>[] = [];
+  const signal: LineData<UTCTimestamp>[] = [];
+  const histogram: HistogramData<UTCTimestamp>[] = [];
+  const fast = calculateEmaValues(candles, 12);
+  const slow = calculateEmaValues(candles, 26);
+  const macdValues: { time: UTCTimestamp; value: number }[] = [];
+
+  candles.forEach((candle, index) => {
+    const fastValue = fast[index];
+    const slowValue = slow[index];
+    if (fastValue === undefined || slowValue === undefined) return;
+
+    macdValues.push({ time: candle.time, value: fastValue - slowValue });
+  });
+
+  const signalValues = calculateEmaForValues(macdValues, 9);
+
+  macdValues.forEach((point, index) => {
+    macd.push(point);
+    const signalValue = signalValues[index];
+
+    if (signalValue === undefined) return;
+
+    signal.push({ time: point.time, value: signalValue });
+    const diff = point.value - signalValue;
+    histogram.push({
+      time: point.time,
+      value: diff,
+      color: diff >= 0 ? "hsl(164 80% 54% / 0.5)" : "hsl(0 72% 71% / 0.5)",
+    });
+  });
+
+  return { macd, signal, histogram };
+}
+
 function calculateVwap(candles: BtcCandle[]): LineData<UTCTimestamp>[] {
   const data: LineData<UTCTimestamp>[] = [];
   let priceVolume = 0;
@@ -650,6 +934,53 @@ function calculateVwap(candles: BtcCandle[]): LineData<UTCTimestamp>[] {
   });
 
   return data;
+}
+
+function makeGuideLines(data: LineData<UTCTimestamp>[], high: number, low: number) {
+  return {
+    high: data.map((point) => ({ time: point.time, value: high })),
+    low: data.map((point) => ({ time: point.time, value: low })),
+  };
+}
+
+function rsiFromAverages(avgGain: number, avgLoss: number) {
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
+
+function calculateEmaValues(candles: BtcCandle[], period: number) {
+  if (candles.length < period) return [];
+
+  const values: Array<number | undefined> = Array(candles.length).fill(undefined);
+  const multiplier = 2 / (period + 1);
+  let ema = candles.slice(0, period).reduce((sum, candle) => sum + candle.close, 0) / period;
+
+  values[period - 1] = ema;
+
+  for (let index = period; index < candles.length; index += 1) {
+    ema = (candles[index].close - ema) * multiplier + ema;
+    values[index] = ema;
+  }
+
+  return values;
+}
+
+function calculateEmaForValues(values: { time: UTCTimestamp; value: number }[], period: number) {
+  if (values.length < period) return [];
+
+  const out: Array<number | undefined> = Array(values.length).fill(undefined);
+  const multiplier = 2 / (period + 1);
+  let ema = values.slice(0, period).reduce((sum, point) => sum + point.value, 0) / period;
+
+  out[period - 1] = ema;
+
+  for (let index = period; index < values.length; index += 1) {
+    ema = (values[index].value - ema) * multiplier + ema;
+    out[index] = ema;
+  }
+
+  return out;
 }
 
 function formatUsd(value: number) {
