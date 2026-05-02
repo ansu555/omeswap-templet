@@ -1,11 +1,11 @@
 # Graph Report - omeswap-templet  (2026-05-02)
 
 ## Corpus Check
-- 458 files · ~268,359 words
+- 459 files · ~268,411 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 944 nodes · 780 edges · 65 communities detected
+- 945 nodes · 780 edges · 65 communities detected
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 96 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -71,10 +71,10 @@
 - [[_COMMUNITY_Community 87|Community 87]]
 - [[_COMMUNITY_Community 92|Community 92]]
 - [[_COMMUNITY_Community 162|Community 162]]
-- [[_COMMUNITY_Community 335|Community 335]]
 - [[_COMMUNITY_Community 336|Community 336]]
 - [[_COMMUNITY_Community 337|Community 337]]
 - [[_COMMUNITY_Community 338|Community 338]]
+- [[_COMMUNITY_Community 339|Community 339]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `POST()` - 54 edges
@@ -349,19 +349,19 @@ Nodes (3): MultiTokenLiquidityPools Contract, Rationale: Uniswap V2 AMM as desig
 Cohesion: 1.0
 Nodes (2): Avalanche Mainnet (Chain ID 43114), Rationale: Avalanche chosen for low gas fees
 
-### Community 335 - "Community 335"
+### Community 336 - "Community 336"
 Cohesion: 1.0
 Nodes (1): PoolPage() Component
 
-### Community 336 - "Community 336"
+### Community 337 - "Community 337"
 Cohesion: 1.0
 Nodes (1): app/(app)/trade/page.tsx
 
-### Community 337 - "Community 337"
+### Community 338 - "Community 338"
 Cohesion: 1.0
 Nodes (1): OmeSwap / Avalanche DEX
 
-### Community 338 - "Community 338"
+### Community 339 - "Community 339"
 Cohesion: 1.0
 Nodes (1): avax-agent (standalone Next.js app)
 
@@ -448,13 +448,13 @@ Nodes (1): avax-agent (standalone Next.js app)
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 162`** (2 nodes): `Avalanche Mainnet (Chain ID 43114)`, `Rationale: Avalanche chosen for low gas fees`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 335`** (1 nodes): `PoolPage() Component`
+- **Thin community `Community 336`** (1 nodes): `PoolPage() Component`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 336`** (1 nodes): `app/(app)/trade/page.tsx`
+- **Thin community `Community 337`** (1 nodes): `app/(app)/trade/page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 337`** (1 nodes): `OmeSwap / Avalanche DEX`
+- **Thin community `Community 338`** (1 nodes): `OmeSwap / Avalanche DEX`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 338`** (1 nodes): `avax-agent (standalone Next.js app)`
+- **Thin community `Community 339`** (1 nodes): `avax-agent (standalone Next.js app)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
