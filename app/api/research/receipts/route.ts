@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     const supabase = createSupabaseAdminClient()
 
     let query = supabase
-      .from('decision_receipts')
+      .from('ats_receipts')
       .select(
         [
           'id',
@@ -59,7 +59,6 @@ export async function GET(req: NextRequest) {
         { count: 'exact' },
       )
       .eq('user_wallet', userWallet.toLowerCase())
-      .not('run_id', 'is', null) // ATS receipts only (marketplace receipts have no run_id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

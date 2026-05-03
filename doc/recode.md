@@ -105,3 +105,15 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-03 20:20:14 +0530] agent=codex user=anik branch=main
 - upgrade_paths: app/terminal/layout.tsx, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
 - upgrade_summary: Wrapped the standalone terminal route with theme and Wagmi wallet providers, and marked it force-dynamic so wallet-dependent terminal hooks do not prerender outside provider context during deployment builds. Refreshed Graphify metadata for the code change.
+
+### [2026-05-03 20:00:05 +0530] agent=claude user=ansu555 branch=swaping
+- upgrade_paths: lib/axl/types.ts, lib/axl/config.ts, lib/axl/client.ts, lib/axl/index.ts, lib/ats/remote-agents.ts, lib/ats/orchestrator.ts, app/api/research/run/route.ts, scripts/axl-agent-service.ts, scripts/axl-demo.ts, package.json, .env.example, README.md, doc/axl.md, doc/guideline.md
+- upgrade_summary: Added Gensyn AXL transport so ATS Regime/Signal/Graph/Risk agents can run on separate AXL peer nodes via MCP tools/call. Orchestrator selects local|axl|auto per run; remote adapters re-emit peer RunEvents tagged with payload.axl. New scripts: axl-agent-service hosts the agents as an MCP service registered with the AXL MCP router; axl-demo verifies topology, router, and one AXL-backed ATS run. Docs and env.example updated for hackathon submission.
+
+### [2026-05-03 19:43:00 +0530] agent=claude user=ansu555 branch=swaping
+- upgrade_paths: .env.local
+- upgrade_summary: Verified all three agent capabilities (research, trade, swap) against live OpenRouter API key. Added missing OPEN_ROUTER_API_KEY alias to .env.local so the canvas agent route (app/api/agent-builder/agent/route.ts) can resolve the key alongside OPENROUTER_API_KEY. All four tests passed: research inference (Gemini 2.5 Flash Lite), swap canvas build (Claude Sonnet 4.5), LimitOrder trade logic, and SwapNode slippage math.
+
+### [2026-05-03 19:13:00 +0530] agent=claude user=ansu555 branch=swaping
+- upgrade_paths: supabase/migrations/20260503_decision_receipts.sql, lib/ats/orchestrator.ts, app/api/research/receipts/route.ts, app/api/dev-migrate/route.ts, scripts/migrate-ats.ts, scripts/test-llm.mjs, scripts/create-ats-receipts.mjs
+- upgrade_summary: Full end-to-end test with real OpenRouter API key (Gemini 2.5 Flash Lite). Discovered decision_receipts table had strategy_version_id NOT NULL constraint blocking ATS receipt inserts. Fixed by replacing ALTER TABLE approach with a dedicated public.ats_receipts table (cleaner separation from marketplace receipts). Updated orchestrator and receipts API to use ats_receipts. Fixed stored API key missing sk-or-v1- prefix causing silent LLM fallbacks. Confirmed: data agent fetches real CoinGecko prices, regime/signal/causal/graph agents make real LLM calls, risk agent applies Kelly sizing, receipts persist to Supabase. Pipeline fully functional — BTC analysis returned BUY (95% confidence) with institutional causal chain active.

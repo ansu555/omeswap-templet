@@ -32,12 +32,14 @@ import { runOrchestrator } from '@/lib/ats/orchestrator'
 import { saveAgentMemory } from '@/lib/zerog'
 import { getChainConfig, DEFAULT_CHAIN_ID } from '@/lib/chain-registry'
 import type { RunEvent, Mode } from '@/lib/ats/types'
+import type { AxlTransport } from '@/lib/axl'
 
 export const dynamic = 'force-dynamic'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const VALID_MODES: Mode[] = ['autonomous', 'assisted', 'solo']
+const VALID_TRANSPORTS: AxlTransport[] = ['local', 'axl', 'auto']
 
 /**
  * Ordered list of known tickers used to extract a ticker from a free-text query
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
     mode?: string
     chainId?: number
     executionApproved?: boolean
+    transport?: string
   }
   try {
     body = (await req.json()) as typeof body
@@ -147,6 +150,13 @@ export async function POST(req: NextRequest) {
       : null) ??
     'solo'
 
+  // Optional per-request transport override (defaults to ATS_AGENT_TRANSPORT in orchestrator)
+  const transportFromBody = body.transport?.toLowerCase() as AxlTransport | undefined
+  const transport: AxlTransport | undefined =
+    transportFromBody && VALID_TRANSPORTS.includes(transportFromBody)
+      ? transportFromBody
+      : undefined
+
   // ── Agent wallet: init (idempotent) + estimate USD balance ──────────────────
   const run_id = makeRunId()
   let agentBalanceUSD = 0
@@ -179,6 +189,7 @@ export async function POST(req: NextRequest) {
             chainId,
             executionApproved: body.executionApproved,
             agentBalanceUSD,
+            transport,
           },
           send,
         )

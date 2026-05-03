@@ -39,6 +39,18 @@ import { runSignalAgent } from '@/lib/ats/agents/signal-agent'
 import { runGraphAgent } from '@/lib/ats/agents/graph-agent'
 import { runRiskAgent } from '@/lib/ats/agents/risk-agent'
 import { runExecutionAgent } from '@/lib/ats/agents/execution-agent'
+import {
+  runRegimeAgentRemote,
+  runSignalAgentRemote,
+  runGraphAgentRemote,
+  runRiskAgentRemote,
+} from '@/lib/ats/remote-agents'
+import {
+  getAtsTransport,
+  getAxlConfig,
+  isAxlReachable,
+  type AxlTransport,
+} from '@/lib/axl'
 
 // ── Public input type ─────────────────────────────────────────────────────────
 
@@ -59,6 +71,14 @@ export interface OrchestratorInput {
   executionApproved?: boolean
   /** Optional: estimated agent wallet USD balance for Kelly sizing */
   agentBalanceUSD?: number
+  /**
+   * Agent transport: where Phase 2/3 (regime, signal, graph, risk) run.
+   *   local — in-process function calls (default)
+   *   axl   — required to be reachable; agents run on AXL peers
+   *   auto  — try AXL, fall back to local if the local AXL node is unreachable
+   * Falls back to ATS_AGENT_TRANSPORT env var when undefined.
+   */
+  transport?: AxlTransport
 }
 
 // ── Consensus matrix ──────────────────────────────────────────────────────────
@@ -129,7 +149,7 @@ async function persistReceipt(receipt: DecisionReceipt): Promise<string | null> 
   try {
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
-      .from('decision_receipts')
+      .from('ats_receipts')
       .insert({
         run_id:            receipt.run_id,
         user_wallet:       receipt.user_wallet.toLowerCase(),
@@ -174,13 +194,48 @@ export async function runOrchestrator(
   const { run_id, query, ticker, mode, userWallet, chainId } = input
   const ts = () => new Date().toISOString()
 
+  // ── Resolve transport (request override → env → default) ─────────────────
+  const requestedTransport: AxlTransport = input.transport ?? getAtsTransport()
+  let activeTransport: 'local' | 'axl' = 'local'
+
+  if (requestedTransport === 'axl' || requestedTransport === 'auto') {
+    const reachable = await isAxlReachable()
+    if (reachable) {
+      activeTransport = 'axl'
+    } else if (requestedTransport === 'axl') {
+      emit({
+        type: 'run.error',
+        run_id,
+        ts: ts(),
+        agent: 'orchestrator',
+        message: `AXL transport requested but local AXL node is unreachable at ${getAxlConfig().apiUrl}.`,
+        payload: { error: 'axl_unreachable', axl_api_url: getAxlConfig().apiUrl },
+      })
+      throw new Error(`AXL transport requested but ${getAxlConfig().apiUrl} is unreachable`)
+    }
+    // auto mode silently falls back to local
+  }
+
   // ── run.start ────────────────────────────────────────────────────────────
+  const axlPayload =
+    activeTransport === 'axl'
+      ? { axl: { api_url: getAxlConfig().apiUrl, service: getAxlConfig().serviceName } }
+      : {}
+
   emit({
     type: 'run.start',
     run_id,
     ts: ts(),
-    message: `ATS run started — analysing ${ticker.toUpperCase()} (${mode} mode)`,
-    payload: { ticker, mode, chain_id: chainId, query },
+    message:
+      `ATS run started — analysing ${ticker.toUpperCase()} (${mode} mode, ${activeTransport} transport)`,
+    payload: {
+      ticker,
+      mode,
+      chain_id: chainId,
+      query,
+      transport: activeTransport,
+      ...axlPayload,
+    },
   })
 
   let allVotes: AgentVote[] = []
@@ -199,10 +254,15 @@ export async function runOrchestrator(
     }
 
     // ── Phase 2: Regime + Signal + Graph (parallel) ───────────────────────
+    const regimeFn = activeTransport === 'axl' ? runRegimeAgentRemote : runRegimeAgent
+    const signalFn = activeTransport === 'axl' ? runSignalAgentRemote : runSignalAgent
+    const graphFn  = activeTransport === 'axl' ? runGraphAgentRemote  : runGraphAgent
+    const riskFn   = activeTransport === 'axl' ? runRiskAgentRemote   : runRiskAgent
+
     const [regimeResult, signalResult, graphResult] = await Promise.all([
-      runRegimeAgent(data, news, userWallet, emit, run_id),
-      runSignalAgent(data, news, regime, userWallet, emit, run_id),  // uses sideways as initial regime
-      runGraphAgent(data, regime, userWallet, emit, run_id),
+      regimeFn(data, news, userWallet, emit, run_id),
+      signalFn(data, news, regime, userWallet, emit, run_id),  // uses sideways as initial regime
+      graphFn(data, regime, userWallet, emit, run_id),
     ])
 
     regime = regimeResult.regime
@@ -216,7 +276,7 @@ export async function runOrchestrator(
     ]
 
     // ── Phase 3: Risk Agent ───────────────────────────────────────────────
-    const riskResult = await runRiskAgent(
+    const riskResult = await riskFn(
       data,
       phase2Votes,
       signalResult.technical,
