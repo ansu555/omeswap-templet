@@ -4,6 +4,16 @@ import Image from "next/image";
 import { ChevronDown, Infinity as InfinityIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { DexMarket } from "@/lib/dex/types";
+import { UniswapSwapCard } from "@/components/trade/UniswapSwapCard";
+import type { SwapToken } from "@/hooks/use-uniswap-swap";
+import { ethereumConfig } from "@/lib/chain-registry/chains/ethereum";
+
+function getEthDecimals(address: string): number {
+  const match = Object.values(ethereumConfig.tokens).find(
+    (t) => t.address.toLowerCase() === address.toLowerCase()
+  );
+  return match?.decimals ?? 18;
+}
 
 type Side = "buy" | "sell";
 type OrderType = "Swap" | "Limit Intent";
@@ -58,6 +68,28 @@ export function TradePanel({ marketId }: { marketId: string }) {
   const route = market?.executionVenue ?? "Swap adapter";
   const liquidity = market?.liquidityUsd ?? 0;
   const isPerp = market?.kind === "perp";
+  const isEthSpot = market?.network === "eth" && market?.kind === "spot";
+
+  const swapTokenBase = useMemo<SwapToken | null>(() => {
+    if (!market || !isEthSpot) return null;
+    return {
+      address: market.baseToken.address as `0x${string}`,
+      symbol: market.baseToken.symbol,
+      name: market.baseToken.name,
+      decimals: getEthDecimals(market.baseToken.address),
+    };
+  }, [market, isEthSpot]);
+
+  const swapTokenQuote = useMemo<SwapToken | null>(() => {
+    if (!market || !isEthSpot) return null;
+    return {
+      address: market.quoteToken.address as `0x${string}`,
+      symbol: market.quoteToken.symbol,
+      name: market.quoteToken.name,
+      decimals: getEthDecimals(market.quoteToken.address),
+    };
+  }, [market, isEthSpot]);
+
   const fundingSymbol = isPerp
     ? market?.quoteToken.symbol ?? "USD"
     : market?.symbol === "USDC"
@@ -194,27 +226,37 @@ export function TradePanel({ marketId }: { marketId: string }) {
         </div>
       </div>
 
-      <div className="p-4 space-y-3 border-t border-border">
-        <button className="w-full h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)]">
-          <Image src="/logo.png" alt="" width={18} height={18} className="rounded-full" /> Connect Wallet
-        </button>
-
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Total Balance</span>
-          <span className="tabular">$0.00</span>
+      {isEthSpot && swapTokenBase && swapTokenQuote ? (
+        <div className="p-3 border-t border-border">
+          <UniswapSwapCard
+            tokenIn={side === "buy" ? swapTokenQuote : swapTokenBase}
+            tokenOut={side === "buy" ? swapTokenBase : swapTokenQuote}
+            marketId={marketId}
+          />
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Available Balance</span>
-          <span className="tabular">$0.00</span>
-        </div>
+      ) : (
+        <div className="p-4 space-y-3 border-t border-border">
+          <button className="w-full h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)]">
+            <Image src="/logo.png" alt="" width={18} height={18} className="rounded-full" /> Connect Wallet
+          </button>
 
-        <button className="w-full h-10 rounded-lg bg-primary/30 text-foreground font-medium hover:bg-primary/40">
-          Deposit
-        </button>
-        <button className="w-full h-10 rounded-lg bg-panel text-muted-foreground font-medium" disabled>
-          Withdraw
-        </button>
-      </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Total Balance</span>
+            <span className="tabular">$0.00</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Available Balance</span>
+            <span className="tabular">$0.00</span>
+          </div>
+
+          <button className="w-full h-10 rounded-lg bg-primary/30 text-foreground font-medium hover:bg-primary/40">
+            Deposit
+          </button>
+          <button className="w-full h-10 rounded-lg bg-panel text-muted-foreground font-medium" disabled>
+            Withdraw
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

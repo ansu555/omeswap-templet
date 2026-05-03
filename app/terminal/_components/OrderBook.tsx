@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import type { DexDepth, DexDepthRow, DexMarket, DexTrade } from "@/lib/dex/types";
 
 type Tab = "depth" | "swaps";
@@ -28,13 +27,24 @@ export function OrderBook({ marketId }: { marketId: string }) {
   const [spread, setSpread] = useState(0);
   const [market, setMarket] = useState<DexMarket | null>(null);
   const [status, setStatus] = useState<"loading" | "live" | "offline">("loading");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  useEffect(() => {
+    if (!lastUpdated) return;
+    setSecondsAgo(0);
+    const tick = window.setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, [lastUpdated]);
 
   useEffect(() => {
     let disposed = false;
     const aborter = new AbortController();
 
     async function loadDepth() {
-      setStatus("loading");
+      if (!disposed) setStatus("loading");
 
       try {
         const [depthResponse, tradesResponse, marketResponse] = await Promise.all([
@@ -65,6 +75,7 @@ export function OrderBook({ marketId }: { marketId: string }) {
         setTrades(recentTrades.trades);
         setMarket(marketSnapshot.market);
         setStatus("live");
+        setLastUpdated(new Date());
       } catch {
         if (!disposed && !aborter.signal.aborted) {
           setStatus("offline");
@@ -73,7 +84,7 @@ export function OrderBook({ marketId }: { marketId: string }) {
     }
 
     loadDepth();
-    const timer = window.setInterval(loadDepth, 30000);
+    const timer = window.setInterval(loadDepth, 10000);
 
     return () => {
       disposed = true;
@@ -87,6 +98,7 @@ export function OrderBook({ marketId }: { marketId: string }) {
     [asks, bids],
   );
   const sizeLabel = market?.symbol ?? "Token";
+  const isPerp = market?.kind === "perp";
 
   return (
     <div className="w-[340px] shrink-0 border-r border-border bg-background flex flex-col">
@@ -110,7 +122,7 @@ export function OrderBook({ marketId }: { marketId: string }) {
       </div>
 
       {activeTab === "depth" ? (
-        <>
+        <div className="relative flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-3 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Price</span>
             <span className="text-right">Size ({sizeLabel})</span>
@@ -122,15 +134,20 @@ export function OrderBook({ marketId }: { marketId: string }) {
               <BookRow key={`a-${row.price}-${index}`} row={row} side="ask" maxTotal={maxTotal} muted={!asks.length} />
             ))}
 
-            <div className="flex items-center justify-center gap-3 py-1.5 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
+            <div className="flex items-center justify-between gap-3 py-1.5 px-3 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
               <span className="flex items-center gap-1.5">
                 <StatusDot status={status} />
-                AMM spread
+                AMM spread · <span className="tabular text-foreground">{spread ? formatPrice(spread) : "..."}</span>
               </span>
-              <button className="flex items-center gap-1 bg-panel rounded px-1.5 py-0.5">
-                0.25% <ChevronDown className="h-3 w-3" />
-              </button>
-              <span className="tabular text-foreground">{spread ? formatPrice(spread) : "..."}</span>
+              <span className="tabular">
+                {status === "live" && lastUpdated
+                  ? secondsAgo < 5
+                    ? "just now"
+                    : `${secondsAgo}s ago`
+                  : status === "loading"
+                    ? "updating…"
+                    : "offline"}
+              </span>
             </div>
 
             {(bids.length ? bids : placeholderRows("bid")).map((row, index) => (
@@ -141,24 +158,38 @@ export function OrderBook({ marketId }: { marketId: string }) {
           <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
             Synthetic AMM depth from pool liquidity, not centralized limit orders.
           </div>
-        </>
+
+          {isPerp && <ComingSoonOverlay />}
+        </div>
       ) : (
-        <>
+        <div className="relative flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-3 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Price</span>
             <span className="text-right">Size ({sizeLabel})</span>
             <span className="text-right">Time</span>
           </div>
-          <div className="flex items-center justify-center gap-2 py-1.5 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
-            <StatusDot status={status} />
-            <span>{status === "live" ? "Live onchain swaps" : status === "loading" ? "Loading swaps" : "Swaps offline"}</span>
+          <div className="flex items-center justify-between px-3 py-1.5 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
+            <span className="flex items-center gap-1.5">
+              <StatusDot status={status} />
+              {status === "live" ? "Onchain swaps" : status === "loading" ? "Loading…" : "Offline"}
+            </span>
+            <span className="tabular">
+              {status === "live" && lastUpdated
+                ? secondsAgo < 5
+                  ? "just now"
+                  : `${secondsAgo}s ago`
+                : status === "loading"
+                  ? "updating…"
+                  : ""}
+            </span>
           </div>
           <div className="flex-1 overflow-hidden">
             {(trades.length ? trades : placeholderTrades()).map((trade, index) => (
               <TradeRowView key={`${trade.id}-${index}`} trade={trade} muted={!trades.length} />
             ))}
           </div>
-        </>
+          {isPerp && <ComingSoonOverlay />}
+        </div>
       )}
     </div>
   );
@@ -263,4 +294,17 @@ function fractionDigitsForPrice(value: number) {
   if (absolute >= 0.01) return 4;
   if (absolute >= 0.0001) return 6;
   return 8;
+}
+
+function ComingSoonOverlay() {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 backdrop-blur-sm bg-background/60">
+      <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Coming Soon
+      </span>
+      <p className="max-w-[200px] text-center text-xs text-muted-foreground leading-relaxed">
+        Perp market data is not publicly available yet
+      </p>
+    </div>
+  );
 }

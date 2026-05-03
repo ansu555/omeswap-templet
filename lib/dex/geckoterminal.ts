@@ -66,7 +66,7 @@ type DexInterval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
 
 const GECKO_BASE_URL = "https://api.geckoterminal.com/api/v2";
 const BINANCE_BASE_URL = "https://api.binance.com/api/v3";
-const CACHE_SECONDS = 20;
+const CACHE_SECONDS = 10;
 
 export async function getDexMarkets(): Promise<DexMarket[]> {
   const markets = await Promise.all(DEX_MARKETS.map((market) => getDexMarket(market.id)));
