@@ -101,3 +101,7 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-03 21:25:00 +0530] agent=claude user=anik branch=swaping
 - upgrade_paths: app/terminal/_components/TradePanel.tsx, app/terminal/page.tsx, components/research/ResearchChat.tsx
 - upgrade_summary: Added agent-activity strip and deep-link approval flow to terminal. TradePanel gains AgentActivityStrip (collapsible list of last 5 ATS receipts from /api/research/receipts showing decision/ticker/size/tx status) and AgentApprovalBanner (shown when terminal is opened via /terminal?from=research&runId=...&decision=...&sizeUsd=...&ticker=...&query=... — streams /api/research/run with executionApproved=true and shows tx hash on completion). ResearchChat ApprovalBanner gains an "Execute in Terminal" button that deep-links to /terminal with all approval context encoded in URL params. terminal/page.tsx wraps TradePanel in Suspense for useSearchParams support.
+
+### [2026-05-03 20:20:14 +0530] agent=codex user=anik branch=main
+- upgrade_paths: app/terminal/layout.tsx, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Wrapped the standalone terminal route with theme and Wagmi wallet providers, and marked it force-dynamic so wallet-dependent terminal hooks do not prerender outside provider context during deployment builds. Refreshed Graphify metadata for the code change.

@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+
+import { AvalancheWalletProvider } from "@/components/providers/avalanche-wallet-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 import "./terminal.css";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Trading Terminal · Omeswap",
@@ -12,5 +18,16 @@ export default function TerminalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="terminal-page">{children}</div>;
+  return (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <AvalancheWalletProvider>
+        <div className="terminal-page">{children}</div>
+      </AvalancheWalletProvider>
+    </ThemeProvider>
+  );
 }
