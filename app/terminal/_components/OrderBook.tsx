@@ -1,125 +1,81 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import type { DexDepth, DexDepthRow, DexMarket, DexTrade } from "@/lib/dex/types";
 
-type DepthLevel = [string, string];
-type OrderRow = { price: number; size: number; total: number };
-type TradeRow = { id: number; price: number; size: number; time: number; side: "buy" | "sell" };
-type Tab = "book" | "trades";
+type Tab = "depth" | "swaps";
 
-type DepthSnapshot = {
-  bids: DepthLevel[];
-  asks: DepthLevel[];
+type DepthResponse = {
+  depth: DexDepth;
 };
 
-type DepthMessage = {
-  bids: DepthLevel[];
-  asks: DepthLevel[];
+type TradesResponse = {
+  trades: DexTrade[];
 };
 
-type TradeMessage = {
-  t: number;
-  p: string;
-  q: string;
-  T: number;
-  m: boolean;
+type MarketResponse = {
+  market: DexMarket;
 };
 
-const SYMBOL = "BTCUSDT";
 const ROW_LIMIT = 10;
-const TRADE_LIMIT = 36;
 
-export function OrderBook() {
-  const [activeTab, setActiveTab] = useState<Tab>("book");
-  const [asks, setAsks] = useState<OrderRow[]>([]);
-  const [bids, setBids] = useState<OrderRow[]>([]);
-  const [trades, setTrades] = useState<TradeRow[]>([]);
+export function OrderBook({ marketId }: { marketId: string }) {
+  const [activeTab, setActiveTab] = useState<Tab>("depth");
+  const [asks, setAsks] = useState<DexDepthRow[]>([]);
+  const [bids, setBids] = useState<DexDepthRow[]>([]);
+  const [trades, setTrades] = useState<DexTrade[]>([]);
+  const [spread, setSpread] = useState(0);
+  const [market, setMarket] = useState<DexMarket | null>(null);
   const [status, setStatus] = useState<"loading" | "live" | "offline">("loading");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  useEffect(() => {
+    if (!lastUpdated) return;
+    setSecondsAgo(0);
+    const tick = window.setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, [lastUpdated]);
 
   useEffect(() => {
     let disposed = false;
-    let depthSocket: WebSocket | null = null;
-    let tradeSocket: WebSocket | null = null;
     const aborter = new AbortController();
 
     async function loadDepth() {
-      setStatus("loading");
+      if (!disposed) setStatus("loading");
 
       try {
-        const [depthResponse, tradesResponse] = await Promise.all([
-          fetch(`https://api.binance.com/api/v3/depth?symbol=${SYMBOL}&limit=20`, {
+        const [depthResponse, tradesResponse, marketResponse] = await Promise.all([
+          fetch(`/api/dex/depth?market=${encodeURIComponent(marketId)}`, {
             signal: aborter.signal,
           }),
-          fetch(`https://api.binance.com/api/v3/trades?symbol=${SYMBOL}&limit=${TRADE_LIMIT}`, {
+          fetch(`/api/dex/trades?market=${encodeURIComponent(marketId)}`, {
+            signal: aborter.signal,
+          }),
+          fetch(`/api/dex/markets?id=${encodeURIComponent(marketId)}`, {
             signal: aborter.signal,
           }),
         ]);
 
-        if (!depthResponse.ok || !tradesResponse.ok) throw new Error("Order book snapshot failed");
+        if (!depthResponse.ok || !tradesResponse.ok || !marketResponse.ok) {
+          throw new Error("Liquidity snapshot failed");
+        }
 
-        const snapshot = (await depthResponse.json()) as DepthSnapshot;
-        const recentTrades = (await tradesResponse.json()) as Array<{
-          id: number;
-          price: string;
-          qty: string;
-          time: number;
-          isBuyerMaker: boolean;
-        }>;
+        const depth = (await depthResponse.json()) as DepthResponse;
+        const recentTrades = (await tradesResponse.json()) as TradesResponse;
+        const marketSnapshot = (await marketResponse.json()) as MarketResponse;
 
         if (disposed) return;
 
-        setAsks(toOrderRows(snapshot.asks, "ask"));
-        setBids(toOrderRows(snapshot.bids, "bid"));
-        setTrades(
-          recentTrades
-            .map((trade) => ({
-              id: trade.id,
-              price: Number(trade.price),
-              size: Number(trade.qty),
-              time: trade.time,
-              side: trade.isBuyerMaker ? ("sell" as const) : ("buy" as const),
-            }))
-            .reverse(),
-        );
+        setAsks(depth.depth.asks.slice(0, ROW_LIMIT));
+        setBids(depth.depth.bids.slice(0, ROW_LIMIT));
+        setSpread(depth.depth.spread);
+        setTrades(recentTrades.trades);
+        setMarket(marketSnapshot.market);
         setStatus("live");
-
-        depthSocket = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@depth20@100ms");
-        depthSocket.onopen = () => {
-          if (!disposed) setStatus("live");
-        };
-        depthSocket.onmessage = (event) => {
-          const message = JSON.parse(event.data as string) as DepthMessage;
-          if (disposed) return;
-
-          setAsks(toOrderRows(message.asks, "ask"));
-          setBids(toOrderRows(message.bids, "bid"));
-        };
-        depthSocket.onerror = () => {
-          if (!disposed) setStatus("offline");
-        };
-        depthSocket.onclose = () => {
-          if (!disposed) setStatus("offline");
-        };
-
-        tradeSocket = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
-        tradeSocket.onmessage = (event) => {
-          const message = JSON.parse(event.data as string) as TradeMessage;
-          if (disposed) return;
-
-          setTrades((current) =>
-            [
-              {
-                id: message.t,
-                price: Number(message.p),
-                size: Number(message.q),
-                time: message.T,
-                side: message.m ? ("sell" as const) : ("buy" as const),
-              },
-              ...current,
-            ].slice(0, TRADE_LIMIT),
-          );
-        };
+        setLastUpdated(new Date());
       } catch {
         if (!disposed && !aborter.signal.aborted) {
           setStatus("offline");
@@ -128,50 +84,49 @@ export function OrderBook() {
     }
 
     loadDepth();
+    const timer = window.setInterval(loadDepth, 10000);
 
     return () => {
       disposed = true;
       aborter.abort();
-      depthSocket?.close();
-      tradeSocket?.close();
+      window.clearInterval(timer);
     };
-  }, []);
+  }, [marketId]);
 
   const maxTotal = useMemo(
     () => Math.max(1, ...asks.map((a) => a.total), ...bids.map((b) => b.total)),
     [asks, bids],
   );
-  const bestAsk = asks[asks.length - 1]?.price ?? 0;
-  const bestBid = bids[0]?.price ?? 0;
-  const spread = bestAsk && bestBid ? bestAsk - bestBid : 0;
+  const sizeLabel = market?.symbol ?? "Token";
+  const isPerp = market?.kind === "perp";
 
   return (
     <div className="w-[340px] shrink-0 border-r border-border bg-background flex flex-col">
       <div className="grid grid-cols-2 border-b border-border text-sm">
         <button
-          onClick={() => setActiveTab("book")}
+          onClick={() => setActiveTab("depth")}
           className={`py-3 font-medium ${
-            activeTab === "book" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
+            activeTab === "depth" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Order Book
+          Liquidity Depth
         </button>
         <button
-          onClick={() => setActiveTab("trades")}
+          onClick={() => setActiveTab("swaps")}
           className={`py-3 font-medium ${
-            activeTab === "trades" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
+            activeTab === "swaps" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Trades
+          Swaps
         </button>
       </div>
 
-      {activeTab === "book" ? (
-        <>
+      {activeTab === "depth" ? (
+        <div className="relative flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-3 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Price</span>
-            <span className="text-right">Size (BTC)</span>
-            <span className="text-right">Total (BTC)</span>
+            <span className="text-right">Size ({sizeLabel})</span>
+            <span className="text-right">Total ({sizeLabel})</span>
           </div>
 
           <div className="flex-1 overflow-hidden">
@@ -179,39 +134,62 @@ export function OrderBook() {
               <BookRow key={`a-${row.price}-${index}`} row={row} side="ask" maxTotal={maxTotal} muted={!asks.length} />
             ))}
 
-            <div className="flex items-center justify-center gap-3 py-1.5 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
+            <div className="flex items-center justify-between gap-3 py-1.5 px-3 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
               <span className="flex items-center gap-1.5">
                 <StatusDot status={status} />
-                Spread
+                AMM spread · <span className="tabular text-foreground">{spread ? formatPrice(spread) : "..."}</span>
               </span>
-              <button className="flex items-center gap-1 bg-panel rounded px-1.5 py-0.5">
-                0.1 <ChevronDown className="h-3 w-3" />
-              </button>
-              <span className="tabular text-foreground">{spread ? spread.toFixed(1) : "..."}</span>
+              <span className="tabular">
+                {status === "live" && lastUpdated
+                  ? secondsAgo < 5
+                    ? "just now"
+                    : `${secondsAgo}s ago`
+                  : status === "loading"
+                    ? "updating…"
+                    : "offline"}
+              </span>
             </div>
 
             {(bids.length ? bids : placeholderRows("bid")).map((row, index) => (
               <BookRow key={`b-${row.price}-${index}`} row={row} side="bid" maxTotal={maxTotal} muted={!bids.length} />
             ))}
           </div>
-        </>
+
+          <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+            Synthetic AMM depth from pool liquidity, not centralized limit orders.
+          </div>
+
+          {isPerp && <ComingSoonOverlay />}
+        </div>
       ) : (
-        <>
+        <div className="relative flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-3 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Price</span>
-            <span className="text-right">Size (BTC)</span>
+            <span className="text-right">Size ({sizeLabel})</span>
             <span className="text-right">Time</span>
           </div>
-          <div className="flex items-center justify-center gap-2 py-1.5 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
-            <StatusDot status={status} />
-            <span>{status === "live" ? "Live BTC tape" : status === "loading" ? "Loading trades" : "Trades offline"}</span>
+          <div className="flex items-center justify-between px-3 py-1.5 text-[11px] text-muted-foreground border-y border-border bg-panel/40">
+            <span className="flex items-center gap-1.5">
+              <StatusDot status={status} />
+              {status === "live" ? "Onchain swaps" : status === "loading" ? "Loading…" : "Offline"}
+            </span>
+            <span className="tabular">
+              {status === "live" && lastUpdated
+                ? secondsAgo < 5
+                  ? "just now"
+                  : `${secondsAgo}s ago`
+                : status === "loading"
+                  ? "updating…"
+                  : ""}
+            </span>
           </div>
           <div className="flex-1 overflow-hidden">
             {(trades.length ? trades : placeholderTrades()).map((trade, index) => (
               <TradeRowView key={`${trade.id}-${index}`} trade={trade} muted={!trades.length} />
             ))}
           </div>
-        </>
+          {isPerp && <ComingSoonOverlay />}
+        </div>
       )}
     </div>
   );
@@ -223,7 +201,7 @@ function BookRow({
   maxTotal,
   muted,
 }: {
-  row: OrderRow;
+  row: DexDepthRow;
   side: "ask" | "bid";
   maxTotal: number;
   muted?: boolean;
@@ -236,20 +214,20 @@ function BookRow({
     <div className={`relative grid grid-cols-3 px-3 py-[3px] text-xs tabular hover:bg-panel/60 ${muted ? "opacity-40" : ""}`}>
       <div className={`absolute right-0 top-0 bottom-0 ${bg}`} style={{ width: `${pct}%` }} />
       <span className={`${color} relative`}>{row.price ? formatPrice(row.price) : "..."}</span>
-      <span className="text-right relative">{row.size ? row.size.toFixed(5) : "..."}</span>
-      <span className="text-right relative">{row.total ? row.total.toFixed(5) : "..."}</span>
+      <span className="text-right relative">{row.size ? formatSize(row.size) : "..."}</span>
+      <span className="text-right relative">{row.total ? formatSize(row.total) : "..."}</span>
     </div>
   );
 }
 
-function TradeRowView({ trade, muted }: { trade: TradeRow; muted?: boolean }) {
+function TradeRowView({ trade, muted }: { trade: DexTrade; muted?: boolean }) {
   const color = trade.side === "buy" ? "text-bull" : "text-bear";
 
   return (
     <div className={`grid grid-cols-3 px-3 py-[3px] text-xs tabular hover:bg-panel/60 ${muted ? "opacity-40" : ""}`}>
-      <span className={color}>{trade.price ? formatPrice(trade.price) : "..."}</span>
-      <span className="text-right">{trade.size ? trade.size.toFixed(5) : "..."}</span>
-      <span className="text-right text-muted-foreground">{trade.time ? formatTime(trade.time) : "..."}</span>
+      <span className={color}>{trade.priceUsd ? formatPrice(trade.priceUsd) : "..."}</span>
+      <span className="text-right">{trade.size ? formatSize(trade.size) : "..."}</span>
+      <span className="text-right text-muted-foreground">{trade.timestamp ? formatTime(trade.timestamp) : "..."}</span>
     </div>
   );
 }
@@ -264,51 +242,69 @@ function StatusDot({ status }: { status: "loading" | "live" | "offline" }) {
   );
 }
 
-function toOrderRows(levels: DepthLevel[], side: "ask" | "bid"): OrderRow[] {
-  let total = 0;
-  const rows = levels
-    .map(([price, size]) => ({ price: Number(price), size: Number(size) }))
-    .filter((row) => row.size > 0)
-    .sort((a, b) => (side === "ask" ? a.price - b.price : b.price - a.price))
-    .slice(0, ROW_LIMIT)
-    .map((row) => {
-      total += row.size;
-      return { ...row, total };
-    });
-
-  return side === "ask" ? rows.reverse() : rows;
-}
-
-function placeholderRows(side: "ask" | "bid"): OrderRow[] {
+function placeholderRows(side: "ask" | "bid"): DexDepthRow[] {
   return Array.from({ length: ROW_LIMIT }, (_, index) => ({
     price: 0,
     size: 0,
     total: side === "ask" ? ROW_LIMIT - index : index + 1,
+    notionalUsd: 0,
   }));
 }
 
-function placeholderTrades(): TradeRow[] {
-  return Array.from({ length: TRADE_LIMIT }, (_, index) => ({
-    id: index,
-    price: 0,
+function placeholderTrades(): DexTrade[] {
+  return Array.from({ length: 36 }, (_, index) => ({
+    id: `placeholder-${index}`,
+    txHash: "",
+    priceUsd: 0,
     size: 0,
-    time: 0,
+    volumeUsd: 0,
+    timestamp: "",
     side: index % 2 === 0 ? "buy" : "sell",
   }));
 }
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: value >= 1 ? 2 : 0,
+    maximumFractionDigits: fractionDigitsForPrice(value),
   }).format(value);
 }
 
-function formatTime(value: number) {
+function formatSize(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: value >= 100 ? 2 : 5,
+  }).format(value);
+}
+
+function formatTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-  }).format(value);
+  }).format(new Date(value));
+}
+
+function fractionDigitsForPrice(value: number) {
+  const absolute = Math.abs(value);
+
+  if (absolute >= 1) return 2;
+  if (absolute >= 0.01) return 4;
+  if (absolute >= 0.0001) return 6;
+  return 8;
+}
+
+function ComingSoonOverlay() {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 backdrop-blur-sm bg-background/60">
+      <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Coming Soon
+      </span>
+      <p className="max-w-[200px] text-center text-xs text-muted-foreground leading-relaxed">
+        Perp market data is not publicly available yet
+      </p>
+    </div>
+  );
 }
