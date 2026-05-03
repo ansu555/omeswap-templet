@@ -117,3 +117,11 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-03 19:13:00 +0530] agent=claude user=ansu555 branch=swaping
 - upgrade_paths: supabase/migrations/20260503_decision_receipts.sql, lib/ats/orchestrator.ts, app/api/research/receipts/route.ts, app/api/dev-migrate/route.ts, scripts/migrate-ats.ts, scripts/test-llm.mjs, scripts/create-ats-receipts.mjs
 - upgrade_summary: Full end-to-end test with real OpenRouter API key (Gemini 2.5 Flash Lite). Discovered decision_receipts table had strategy_version_id NOT NULL constraint blocking ATS receipt inserts. Fixed by replacing ALTER TABLE approach with a dedicated public.ats_receipts table (cleaner separation from marketplace receipts). Updated orchestrator and receipts API to use ats_receipts. Fixed stored API key missing sk-or-v1- prefix causing silent LLM fallbacks. Confirmed: data agent fetches real CoinGecko prices, regime/signal/causal/graph agents make real LLM calls, risk agent applies Kelly sizing, receipts persist to Supabase. Pipeline fully functional — BTC analysis returned BUY (95% confidence) with institutional causal chain active.
+
+### [2026-05-03 21:36:00 +0530] agent=claude user=ansu555 branch=swaping
+- upgrade_paths: components/layout/header.tsx
+- upgrade_summary: Added "Builder" nav item pointing to /agent-builder with Cpu icon; it was missing from navItems despite the route existing.
+
+### [2026-05-03 21:49:00 +0530] agent=claude user=ansu555 branch=swaping
+- upgrade_paths: components/layout/header.tsx, components/ui/nav-bar.tsx
+- upgrade_summary: Fixed nav overflow — replaced absolute/centered nav with flex-1 layout so Builder (9th item) is never clipped; reduced item padding px-6→px-3.5 and gap gap-3→gap-0.5 for a compact, fully-visible nav.
