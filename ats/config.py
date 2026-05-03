@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     agent_model: str = "claude-sonnet-4-6"
     agent_api_key: str = ""
 
+    # Anthropic API key for the Conversation Layer (Phase 8 chat endpoint).
+    # Falls back to agent_api_key when unset.
+    anthropic_api_key: str = ""
+
     # Supabase (DB + service-role key reused from Next.js app)
     supabase_url: str = ""
     supabase_service_role_key: str = ""

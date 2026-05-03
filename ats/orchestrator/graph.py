@@ -17,10 +17,20 @@ async def orchestrator_node(state: AgentState) -> AgentState:
     })
 
 
+_agent6: "Agent6Execution | None" = None
+
+
+def _get_agent6() -> "Agent6Execution":
+    global _agent6
+    if _agent6 is None:
+        from ats.agents.agent6_execution import Agent6Execution
+        _agent6 = Agent6Execution()
+    return _agent6
+
+
 async def execution_node(state: AgentState) -> AgentState:
-    """Phase 7 stub — replaced by the real execution agent."""
-    print(f"[Phase 7 stub] Would execute: {state.risk_decision}")
-    return state
+    """Phase 7 — Agent 6 execution: submit swap, confirm, update portfolio."""
+    return await _get_agent6().execute(state)
 
 
 def build_pipeline() -> StateGraph:
