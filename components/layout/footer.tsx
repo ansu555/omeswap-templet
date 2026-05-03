@@ -7,29 +7,29 @@ import { Github, HelpCircle, BookOpen, FileText, Users } from 'lucide-react';
 const exploreLinks = [
   {
     icon: HelpCircle,
-    title: 'Help center',
-    description: 'Browse FAQs and get support from our support team',
+    title: 'Decision receipts',
+    description: 'Trace every action to the data, agent votes, regime, and risk checks behind it',
     href: '#',
     external: true,
   },
   {
     icon: BookOpen,
-    title: 'Blog',
-    description: 'Catch up on the latest company news, product features and more',
+    title: 'Research briefings',
+    description: 'Read agent-generated market dossiers, regime notes, and strategy performance reviews',
     href: '#',
     external: true,
   },
   {
     icon: FileText,
-    title: 'Docs',
-    description: 'Explore our library of developer docs to get started building with Omeswap',
+    title: 'System docs',
+    description: 'Explore the six-agent architecture, chain adapter interface, and risk framework',
     href: '#',
     external: true,
   },
   {
     icon: Users,
-    title: 'Socials',
-    description: 'Follow Omeswap on X, Discord, and Telegram',
+    title: 'Community',
+    description: 'Follow OmeSwap on X, Discord, and Telegram',
     href: '#',
     external: false,
     socialLinks: [
@@ -41,25 +41,27 @@ const exploreLinks = [
 ];
 
 const footerLinks = {
-  Products: [
-    { name: 'Swap', href: '/trade' },
-    { name: 'Explore', href: '/explore' },
-    { name: 'Portfolio', href: '/portfolio' },
-    { name: 'API', href: '#' },
+  Modes: [
+    { name: 'Autonomous', href: '/onboarding' },
+    { name: 'Assisted', href: '/onboarding' },
+    { name: 'Solo', href: '/onboarding' },
+    { name: 'Research', href: '/explore' },
   ],
-  Protocol: [
-    { name: 'Governance', href: '#' },
-    { name: 'Developers', href: '#' },
+  Platform: [
+    { name: 'Six agents', href: '/agent-builder' },
+    { name: 'Risk engine', href: '/portfolio' },
+    { name: 'Decision receipts', href: '/transactions' },
+    { name: 'Strategy marketplace', href: '/marketplace' },
   ],
-  Company: [
-    { name: 'About', href: '#' },
-    { name: 'Careers', href: '#' },
-    { name: 'Blog', href: '#' },
-    { name: 'Brand assets', href: '#' },
+  Builders: [
+    { name: 'Visual builder', href: '/agent-builder' },
+    { name: 'Python DSL', href: '/agent-builder' },
+    { name: 'Chain adapters', href: '#' },
+    { name: 'Marketplace publishing', href: '/marketplace' },
   ],
   'Need help?': [
-    { name: 'Help center', href: '#' },
-    { name: 'Contact us', href: '#' },
+    { name: 'Documentation', href: '#' },
+    { name: 'Human oversight', href: '#' },
   ],
 };
 
@@ -91,7 +93,7 @@ export function Footer() {
       {/* Explore Section */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
         <h2 className="text-4xl md:text-5xl font-light text-foreground mb-12">
-          Explore the <span className="font-semibold">OMEverse</span>
+          Explore the <span className="font-semibold">OmeSwap agent stack</span>
         </h2>
 
         <div className="space-y-0">
@@ -110,7 +112,7 @@ export function Footer() {
                   <p className="text-muted-foreground text-sm md:text-base max-w-xl">
                     {link.socialLinks ? (
                       <>
-                        Follow Omeswap on{' '}
+                        Follow OmeSwap on{' '}
                         {link.socialLinks.map((social, idx) => (
                           <span key={social.name}>
                             <span className="text-foreground hover:underline">
@@ -193,8 +195,8 @@ export function Footer() {
         <div className="border-t border-border/30">
           <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Image src="/logo.png" alt="Omeswap" width={20} height={20} />
-              <span>&copy; {new Date().getFullYear()} - Omeswap</span>
+              <Image src="/logo.png" alt="OmeSwap" width={20} height={20} />
+              <span>&copy; {new Date().getFullYear()} - OmeSwap</span>
             </div>
             <div className="flex items-center gap-6">
               <Link

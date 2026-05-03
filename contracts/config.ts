@@ -3,7 +3,9 @@
  *
  * All values are now sourced from the chain registry so that this file stays
  * as the single backward-compatible import point for the rest of the codebase.
- * To change addresses, update lib/chain-registry/chains/<chain>.ts.
+ * To change addresses, update lib/chain-registry/chains/zerog.ts.
+ *
+ * Default chain: 0G Newton Testnet (chainId 16600)
  */
 
 import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry'
@@ -21,41 +23,35 @@ export const CONTRACT_ADDRESSES = {
 
 // ── DEX routers ───────────────────────────────────────────────────────────────
 
-const _tjV1 = _cfg.dexRouters.find(r => r.id === 'traderjoe')
-const _pangolin = _cfg.dexRouters.find(r => r.id === 'pangolin')
-const _tjV2 = _cfg.dexRouters.find(r => r.id === 'traderjoe_v2')
+const _dexV1 = _cfg.dexRouters.find(r => r.id === 'zerog_dex')
+const _dexV2 = _cfg.dexRouters.find(r => r.id === 'zerog_dex_v2')
 
 export const DEX_ROUTERS = {
-  TRADER_JOE: (_tjV1?.routerAddress ?? '0x60aE616a2155Ee3d9A68541Ba4544862310933d4') as Address,
-  PANGOLIN: (_pangolin?.routerAddress ?? '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106') as Address,
+  ZEROG_DEX:    (_dexV1?.routerAddress ?? '0x0000000000000000000000000000000000000010') as Address,
+  ZEROG_DEX_V2: (_dexV2?.routerAddress ?? '0x0000000000000000000000000000000000000011') as Address,
 } as const
 
-export const TRADER_JOE_V2 = {
-  ROUTER: (_tjV2?.routerAddress ?? '0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30') as Address,
-  QUOTER: (_tjV2?.quoterAddress ?? '0xd76019A16606FDa4651f636D9751f500Ed776250') as Address,
-} as const
+/** Wrapped native 0G token address */
+export const W0G_ADDRESS = _cfg.nativeWrapped
 
+/** @deprecated Use W0G_ADDRESS. Kept for hook backward-compatibility. */
 export const WAVAX_ADDRESS = _cfg.nativeWrapped
 
 // ── Token addresses ───────────────────────────────────────────────────────────
-// Keys match the legacy format (USDTe, WETHe, etc.) so that existing
-// component code using TOKEN_ADDRESSES["WETHe"] continues to work unchanged.
 
 export const TOKEN_ADDRESSES: { [key: string]: { address: Address; name: string; symbol: string; decimals: number } } = {
-  WAVAX: _rt.WAVAX,
-  USDC: _rt.USDC,
-  'USDC.e': _rt['USDC.e'],
-  USDTe: _rt['USDT.e'],
-  DAIe: _rt['DAI.e'],
-  WETHe: _rt['WETH.e'],
-  WBTCe: _rt['WBTC.e'],
-  LINKe: _rt['LINK.e'],
-  JOE: _rt.JOE,
-  PNG: _rt.PNG,
-  AAVEe: _rt['AAVE.e'],
-  // Legacy aliases
-  tUSDC: _rt.USDC,
-  tUSDT: _rt['USDT.e'],
+  W0G:  _rt.W0G  ?? { address: '0x0000000000000000000000000000000000000001' as Address, name: 'Wrapped 0G', symbol: 'W0G', decimals: 18 },
+  USDC: _rt.USDC ?? { address: '0x0000000000000000000000000000000000000002' as Address, name: 'USD Coin', symbol: 'USDC', decimals: 6 },
+  USDT: _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
+  WETH: _rt.WETH ?? { address: '0x0000000000000000000000000000000000000004' as Address, name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
+  WBTC: _rt.WBTC ?? { address: '0x0000000000000000000000000000000000000005' as Address, name: 'Wrapped Bitcoin', symbol: 'WBTC', decimals: 8 },
+  // Legacy aliases for hooks/components that use old Avalanche key names
+  WAVAX:    _rt.W0G  ?? { address: '0x0000000000000000000000000000000000000001' as Address, name: 'Wrapped 0G', symbol: 'W0G', decimals: 18 },
+  WETHe:    _rt.WETH ?? { address: '0x0000000000000000000000000000000000000004' as Address, name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
+  WBTCe:    _rt.WBTC ?? { address: '0x0000000000000000000000000000000000000005' as Address, name: 'Wrapped Bitcoin', symbol: 'WBTC', decimals: 8 },
+  USDTe:    _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
+  tUSDC:    _rt.USDC ?? { address: '0x0000000000000000000000000000000000000002' as Address, name: 'USD Coin', symbol: 'USDC', decimals: 6 },
+  tUSDT:    _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
 }
 
 export const TOKENS = TOKEN_ADDRESSES

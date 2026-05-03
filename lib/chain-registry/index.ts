@@ -1,23 +1,30 @@
 /**
  * Chain Registry — central lookup for all supported chain configs.
  *
+ * Default chain: 0G Newton Testnet (chainId 16600)
+ * 0G is an EVM-compatible Layer-1 for AI agents with four core primitives:
+ *   - 0G Chain    — EVM execution (chainId 16600)
+ *   - 0G Storage  — decentralized KV + Log for persistent agent memory
+ *   - 0G DA       — infinitely scalable data availability
+ *   - 0G Compute  — decentralized AI inference (qwen3, GLM-5-FP8, etc.)
+ *
  * To add a new chain:
  *   1. Create lib/chain-registry/chains/<chain>.ts exporting a ChainConfig
  *   2. Import it below and add it to REGISTRY
  *   Done — wallet provider, swap hooks, agent nodes, and explorer links all
- *   pick it up automatically once the downstream phases are complete.
+ *   pick it up automatically.
  */
 
 import type { ChainConfig, DexRouter, TokenInfo } from './types'
-import { avalancheConfig } from './chains/avalanche'
+import { zeroGConfig } from './chains/zerog'
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 const REGISTRY: Record<number, ChainConfig> = {
-  [avalancheConfig.chain.id]: avalancheConfig,
+  [zeroGConfig.chain.id]: zeroGConfig,
 }
 
-export const DEFAULT_CHAIN_ID: number = avalancheConfig.chain.id
+export const DEFAULT_CHAIN_ID: number = zeroGConfig.chain.id
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
 
@@ -41,7 +48,7 @@ export function getSupportedChains(): ChainConfig[] {
   return Object.values(REGISTRY)
 }
 
-/** Returns the default chain ID (currently Avalanche mainnet: 43114) */
+/** Returns the default chain ID (0G Newton Testnet: 16600) */
 export function getDefaultChainId(): number {
   return DEFAULT_CHAIN_ID
 }
@@ -60,8 +67,8 @@ export function getDexRouters(chainId: number): DexRouter[] {
  * Builds a block-explorer URL for the given chain.
  *
  * @example
- *   getExplorerLink(43114, 'tx', '0xabc…')
- *   // → 'https://snowtrace.io/tx/0xabc…'
+ *   getExplorerLink(16600, 'tx', '0xabc…')
+ *   // → 'https://chainscan-newton.0g.ai/tx/0xabc…'
  */
 export function getExplorerLink(
   chainId: number,
