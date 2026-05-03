@@ -15,6 +15,10 @@ export const ROUTES = {
 } as const;
 
 export const EXTERNAL_LINKS = {
-  DOCS: 'https://docs.avax.network',
-  GITHUB: 'https://github.com/ava-labs',
+  DOCS: 'https://docs.0g.ai',
+  GITHUB: 'https://github.com/0glabs',
+  EXPLORER: 'https://chainscan-newton.0g.ai',
+  STORAGE_DOCS: 'https://docs.0g.ai/0g-storage',
+  COMPUTE_DOCS: 'https://docs.0g.ai/0g-compute',
+  DA_DOCS: 'https://docs.0g.ai/0g-da',
 } as const;

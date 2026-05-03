@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ChatProvider } from "@/components/providers/chat-provider";
 import { ChatbotPanel, ChatToggleButton } from "@/components/ui/chatbot-panel";
 import { OnboardingGuard } from "@/components/providers/onboarding-guard";
+import { DisconnectOverlay } from "@/components/onboarding/disconnect-overlay";
 export const dynamic = "force-dynamic";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     >
       <AvalancheWalletProvider>
         <OnboardingGuard />
+        <DisconnectOverlay />
         <ChatProvider>
           <BackgroundPaths />
           <div className="flex flex-col h-screen overflow-hidden">

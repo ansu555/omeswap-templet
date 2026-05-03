@@ -5,7 +5,6 @@ import { Suspense, lazy } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Logo } from "@/components/layout/logo";
 
 const Spline = lazy(() => import("@splinetool/react-spline"));
 
@@ -65,7 +64,7 @@ function ScreenshotSection({
       >
         <Image
           src="/swap-preview.png"
-          alt="Omeswap Interface Preview"
+          alt="OmeSwap agentic trading co-pilot interface preview"
           width={3420}
           height={2224}
           className="w-full h-auto"
@@ -80,14 +79,13 @@ function HeroContent() {
   return (
     <div className="text-left text-white pt-16 sm:pt-24 md:pt-32 px-4 max-w-3xl">
       <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold mb-4 leading-tight tracking-wide">
-        Trade smarter <br className="sm:hidden" />
-        on Avalanche
-        <br className="sm:hidden" /> with Omeswap.
+        Trade smarter with
+        <br className="sm:hidden" /> AI co-pilot.
       </h1>
       <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 opacity-80 max-w-xl">
-        The next-generation decentralized exchange on Avalanche. Swap tokens
-        instantly with minimal fees, deep liquidity, and a seamless trading
-        experience.
+        OmeSwap is a six-agent AI co-pilot for market decisions, risk control,
+        strategy research, and chain-agnostic execution. Every signal comes
+        with a clear Decision Receipt you can question at any depth.
       </p>
       <div className="flex pointer-events-auto flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-3">
         <Link
@@ -95,7 +93,7 @@ function HeroContent() {
           className="bg-purple-600/20 hover:bg-purple-600/30 text-white font-semibold py-2 sm:py-3 px-6 sm:px-8 rounded-full transition duration-300 w-full sm:w-auto border border-purple-500/30 text-center"
           style={{ backdropFilter: "blur(8px)" }}
         >
-          Launch App
+          Launch Co-Pilot
         </Link>
       </div>
     </div>
@@ -112,15 +110,26 @@ function LandingHeader() {
             href="/"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <Logo />
+            <div className="flex items-center gap-2.5 rounded-full bg-background/5 border border-border backdrop-blur-lg shadow-lg px-4 py-2">
+              <Image
+                src="/logo.png"
+                alt="OmeSwap"
+                width={32}
+                height={32}
+                className="flex-shrink-0"
+              />
+              <span className="text-lg font-semibold text-foreground">
+                OmeSwap
+              </span>
+            </div>
           </Link>
 
-          {/* Right Section - Launch App Button */}
+          {/* Right Section - Launch Button */}
           <Link
             href="/onboarding"
             className="flex items-center gap-2.5 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-lg shadow-lg px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
           >
-            Launch App
+            Launch Co-Pilot
           </Link>
         </nav>
       </div>
@@ -129,10 +138,10 @@ function LandingHeader() {
 }
 
 const stats = [
-  { label: "All time volume", value: "$4.0T", highlight: false },
-  { label: "Total value locked", value: "$3.5B", highlight: false },
-  { label: "All time swappers", value: "119.0M", highlight: false },
-  { label: "24H swap volume", value: "$2.5B", highlight: true },
+  { label: "Specialized agents", value: "6", highlight: false },
+  { label: "Trading modes", value: "3", highlight: false },
+  { label: "Explanation depths", value: "4", highlight: false },
+  { label: "Risk veto", value: "Hard", highlight: true },
 ];
 
 const containerVariants = {
@@ -170,23 +179,25 @@ function ProtocolStatsSection() {
             transition={{ duration: 0.6, ease: "easeOut" }}
           >
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-white leading-tight mb-32">
-              DeFi&apos;s leading protocol.
+              Consensus before action.
               <br />
-              Powering trillions.
+              Receipts after every decision.
             </h2>
             <p className="text-lg md:text-xl text-gray-400 mb-4 max-w-lg">
-              Omeswap delivers every piece of the onchain economy in one
-              platform.
+              The engine combines data ingestion, signal generation, graph
+              relationships, market regime detection, risk management, and
+              execution into one auditable workflow.
             </p>
             <p className="text-lg md:text-xl text-gray-400 mb-8 max-w-lg">
-              Get no fees trading, proven security, and deep liquidity, all
-              backed by crypto&apos;s most trusted DEX.
+              The Conversation Layer reads the Decision Receipt directly, so
+              users can ask why a trade happened, what changed, and what the
+              maximum portfolio impact is.
             </p>
             <Link
-              href="/trade"
+              href="/onboarding"
               className="inline-flex items-center gap-2 bg-[#1a1a24] hover:bg-[#252532] text-white font-medium py-3 px-6 rounded-full transition-all duration-300 border border-gray-700/50 hover:border-gray-600 group"
             >
-              Trade without fees
+              Configure your mode
               <svg
                 className="w-4 h-4 transition-transform group-hover:translate-x-1"
                 fill="none"
@@ -224,7 +235,7 @@ function ProtocolStatsSection() {
               <div className="relative flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
                 <span className="text-gray-200 text-base font-medium">
-                  Omeswap Protocol stats
+                  OmeSwap Agent Stack
                 </span>
               </div>
             </motion.div>

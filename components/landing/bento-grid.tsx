@@ -86,7 +86,7 @@ function UniswapXCard() {
   return (
     <BentoCard
       className="bg-gradient-to-br from-[#1a1a2e] to-[#16162a] border border-purple-500/10 h-full"
-      href="/trade"
+      href="/agent-builder"
     >
       <div
         ref={contentRef}
@@ -115,21 +115,22 @@ function UniswapXCard() {
         {/* Header badge */}
         <div className="relative z-10 flex items-center gap-2 mb-6">
           <Zap className="w-5 h-5 text-purple-500" fill="currentColor" />
-          <span className="text-purple-500 text-base font-medium">OmeX</span>
+          <span className="text-purple-500 text-base font-medium">Consensus Engine</span>
         </div>
 
         {/* Content */}
         <h3 className="relative z-10 text-2xl md:text-3xl lg:text-4xl font-medium text-purple-500 mb-4">
-          Smarter swaps. Aggregated<br />liquidity.
+          Six agents.<br />One decision trail.
         </h3>
         <p className="relative z-10 text-gray-400 text-base md:text-lg mb-6 max-w-md leading-relaxed">
-          Enjoy fast swaps, smart protection,<br />and deep liquidity.
+          Data, signal, graph, regime, risk, and execution agents vote before
+          the Orchestrator writes the receipt.
         </p>
 
         {/* CTA */}
         <div className="relative z-10 mt-auto">
           <span className="inline-flex items-center gap-2 bg-[#1a1a24] hover:bg-[#252532] text-sm font-medium px-5 py-2.5 rounded-full transition-all duration-300 group cursor-pointer" style={{ color: '#a855f7' }}>
-            Try OmeX
+            Review consensus
             <svg
               className="w-4 h-4 transition-transform group-hover:translate-x-1"
               fill="none"
@@ -155,18 +156,18 @@ function UniswapXCard() {
             <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm0 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
             </svg>
-            MEV protection
+            6-agent vote
           </span>
           
           {/* Bottom row */}
           <div className="flex gap-2">
             <span className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/80 backdrop-blur-sm text-sm text-white font-medium">
               <Check className="w-4 h-4 text-white" />
-              Best swap
+              Receipt
             </span>
             <span className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-400/60 backdrop-blur-sm text-sm text-white font-medium">
               <Image src="/bento/UniswapX.svg" alt="" width={16} height={16} className="w-4 h-4" />
-              Free
+              Traceable
             </span>
           </div>
         </motion.div>
@@ -194,7 +195,7 @@ function LiquidityProvisionCard() {
   return (
     <BentoCard
       className="bg-gradient-to-br from-[#0d1a1a] to-[#0a1515] border border-emerald-500/10 h-full"
-      href="/pools"
+      href="/portfolio"
     >
       <div
         ref={contentRef}
@@ -223,21 +224,22 @@ function LiquidityProvisionCard() {
         {/* Header badge */}
         <div className="flex items-center gap-2 mb-6">
           <BarChart3 className="w-5 h-5 text-emerald-400" />
-          <span className="text-emerald-400 text-base font-medium">Liquidity Provision</span>
+          <span className="text-emerald-400 text-base font-medium">Risk Gatekeeper</span>
         </div>
 
         {/* Content */}
         <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium text-emerald-400 mb-4">
-          Provide liquidity,<br />earn fees.
+          Hard vetoes<br />before exposure.
         </h3>
         <p className="text-gray-400 text-base md:text-lg mb-8 max-w-md leading-relaxed">
-          Earn by powering onchain markets<br />with Liquidity Pools.
+          Position sizing, VaR, drawdown, liquidity, correlation, VIX, and
+          crisis rules can block any signal.
         </p>
 
         {/* CTA */}
         <div className="mt-auto">
           <span className="inline-flex items-center gap-2 bg-[#1a1a24] hover:bg-[#252532] text-emerald-400 text-sm font-medium px-5 py-2.5 rounded-full transition-all duration-300 group cursor-pointer">
-            Explore pools
+            Inspect risk rules
             <svg
               className="w-4 h-4 transition-transform group-hover:translate-x-1"
               fill="none"
@@ -272,7 +274,7 @@ function TradingAPICard() {
   return (
     <BentoCard
       className="bg-gradient-to-br from-[#2a1a0a] to-[#1a1008] border border-orange-500/10 h-full"
-      href="/developers"
+      href="/agent-builder"
     >
       <div
         ref={contentRef}
@@ -301,25 +303,26 @@ function TradingAPICard() {
         {/* Header badge */}
         <div className="flex items-center gap-2 mb-6">
           <Code2 className="w-5 h-5 text-orange-400" />
-          <span className="text-orange-400 text-base font-medium">Trading API</span>
+          <span className="text-orange-400 text-base font-medium">Strategy Builder</span>
         </div>
 
         {/* Content */}
         <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium text-orange-400 mb-4">
-          DeFi for your users,<br />at no cost.
+          Build strategies<br />with agent data.
         </h3>
         <p className="text-gray-400 text-base md:text-lg mb-6 max-w-md leading-relaxed">
-          Use the same API that powers Omeswap Apps. Join leading teams who trust the API to access deep crypto liquidity.
+          Combine visual blocks or Python DSL with live sentiment, regime,
+          graph impact, and institutional flow signals.
         </p>
 
         {/* Code snippet decoration */}
         <div className="mb-4 px-3 py-2 rounded-lg bg-orange-500/5 border border-orange-500/20 w-fit">
-          <code className="text-xs text-orange-300 font-mono">omeswap-v4-sdk</code>
+          <code className="text-xs text-orange-300 font-mono">strategy.signal(ticker)</code>
         </div>
 
         {/* CTA */}
         <div className="flex items-center gap-2 text-orange-400 text-sm font-medium mt-auto group">
-          <span>Integrate the Omeswap API</span>
+          <span>Open the strategy lab</span>
           <svg
             className="w-4 h-4 transition-transform group-hover:translate-x-1"
             fill="none"
@@ -395,20 +398,21 @@ function UnichainCard() {
         {/* Header badge */}
         <div className="flex items-center gap-2 mb-6 relative z-10">
           <Sparkles className="w-5 h-5 text-pink-400" />
-          <span className="text-pink-400 text-base font-medium">Avalanche</span>
+          <span className="text-pink-400 text-base font-medium">Chain Adapter</span>
         </div>
 
         {/* Content */}
         <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium text-pink-400 mb-4 relative z-10">
-          The DeFi chain.
+          One engine.<br />Many execution rails.
         </h3>
         <p className="text-gray-400 text-base md:text-lg mb-6 max-w-md leading-relaxed relative z-10">
-          Join the community building on the fast, decentralized Ethereum L2 built to be the home for DeFi.
+          Keep the agent core unchanged while swapping adapters for Ethereum,
+          Solana, Avalanche, or future chains.
         </p>
 
         {/* CTA */}
         <div className="flex items-center gap-2 text-pink-400 text-sm font-medium mt-auto group relative z-10">
-          <span>Start building</span>
+          <span>Configure an adapter</span>
           <svg
             className="w-4 h-4 transition-transform group-hover:translate-x-1"
             fill="none"
@@ -459,7 +463,7 @@ export function BentoGrid() {
           className="text-left mb-12 md:mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-white">
-            Built for all the ways you swap
+            Built for explainable agentic trading
           </h2>
         </motion.div>
 
