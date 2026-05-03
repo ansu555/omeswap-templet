@@ -19,3 +19,7 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-03 09:30:00 Z] agent=claude user=ansu555 branch=agents
 - upgrade_paths: ats/api/main.py, ats/api/ws_manager.py, ats/api/routes/__init__.py, ats/api/routes/activations.py, ats/api/routes/receipts.py, ats/api/routes/chat.py, ats/api/conversation/__init__.py, ats/api/conversation/rag.py, ats/config.py, requirements.txt, tests/test_phase8.py
 - upgrade_summary: Implemented Phase 8 — API, WebSocket & Conversation Layer. FastAPI app gains CORS middleware, WebSocket broadcast manager (`/ws`), three REST routes (POST /api/activations/{id}/execute, GET /api/receipts/{id}, POST /api/chat), a RAG module that injects recent Decision Receipts as grounding context, and a Conversation Layer that answers user questions via Claude claude-sonnet-4-6 + receipt context. Added `anthropic_api_key` to Settings with fallback to `agent_api_key`. Added `anthropic>=0.97.0` to requirements.txt. 43/43 tests passing.
+
+### [2026-05-03 15:22:40 +0530] agent=codex user=ansu555 branch=agents
+- upgrade_paths: tests/test_integration.py
+- upgrade_summary: Added a full ATS integration test suite that validates cross-module communication across orchestrator graph routing, Redis handoffs, Agent6 execution flow, stop-loss monitoring, Postgres receipt updates, RAG/chat grounding, API-to-pipeline wiring, and startup lifecycle behavior. The suite uses real internal module wiring while mocking only external systems.
