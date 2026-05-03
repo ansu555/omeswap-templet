@@ -25,3 +25,13 @@ changes: implemented Phase 2 — Agent 4 regime detection; generic price_reader/
 user: ansu555
 branch: agents
 changes: implemented Phase 3 — Agent 2 signal agent; FinBERT sentiment module, technicals (MACD/BB %B), combiner, agent2_signal.py; writes signal:latest:{TICKER} to Redis
+
+[2026-05-03 14:32]
+user: ansu555
+branch: agents
+changes: implemented Phase 5 — Agent 5 risk agent; kelly.py (quarter-Kelly, vol/regime multipliers), portfolio_reader.py, agent5_risk.py (10-rule evaluator with veto codes)
+
+[2026-05-03 15:00]
+user: ansu555
+branch: agents
+changes: implemented Phase 6 — Orchestrator & LangGraph; ats/orchestrator/ with graph.py (StateGraph), nodes.py (regime/signal_and_graph/risk), consensus.py, receipt_writer.py, __init__.py (run_pipeline entry point); tests/test_phase6.py 48/48 passed
