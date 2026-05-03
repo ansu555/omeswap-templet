@@ -167,6 +167,21 @@ npm run build           # Build for production
 npm run start           # Start production server
 npm run lint            # Run linter
 npm run hardhat:*       # Hardhat operations
+npm run axl:agent       # Host ATS agents as an MCP service for an AXL peer
+npm run axl:demo        # End-to-end AXL ATS swarm demo (BTC by default)
+```
+
+## AXL — Peer-to-Peer ATS Swarm
+
+OmeSwap's ATS pipeline can run its Regime, Signal, Graph, and Risk agents on
+separate Gensyn AXL peer nodes instead of in-process. The orchestrator picks a
+transport per run (`local` | `axl` | `auto`) and the rest of the product is
+unchanged. See [`doc/axl.md`](./doc/axl.md) for the two-node demo walkthrough,
+required env vars, and judge-facing verification commands.
+
+```bash
+# After setting AXL_PEER_ID and starting the agent service on Node B:
+ATS_AGENT_TRANSPORT=axl bun run axl:demo BTC solo
 ```
 
 ## 🌐 Network Configuration
