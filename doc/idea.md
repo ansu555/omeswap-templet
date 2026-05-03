@@ -43,7 +43,10 @@ The second core innovation is its **chain-agnostic architecture**. The entire pl
 | Decision transparency | Black box — no explanation | Full Decision Receipt per trade at any depth |
 | Agent architecture | Single model or fixed rules | 6 specialized agents with consensus voting |
 | Regime awareness | One model for all conditions | Regime agent classifies market; agents adapt |
-| Blockchain integration | Centralized execution only | Chain-agnostic template; swap adapter per chain |
+| Blockchain integration | Centralized execution only | 0G Chain (EVM, chainId 16600) via chain registry |
+| Agent memory | Session-only or centralized DB | Persistent 0G Storage — KV state + Log history |
+| AI inference | Centralized API (OpenAI/Anthropic) | 0G Compute — decentralized, ZK-verifiable inference |
+| High-volume data | Off-chain or plain DB | 0G DA — on-chain availability commitments |
 | User control | All or nothing | Three modes: Autonomous, Assisted, Solo |
 | Strategy ecosystem | Fixed internal strategies | Built-in library + open marketplace + custom builder |
 | Risk enforcement | Softcoded guidelines | Hard rules with absolute veto — cannot be overridden |
@@ -102,11 +105,102 @@ The entire system is built as a deployable template. All agent logic, data pipel
 ### How to Add a New Chain
 
 1. Implement the Chain Adapter interface — four functions: `connectWallet()`, `signTransaction()`, `routeOrder()`, `mintReceipt()`
-2. Configure RPC endpoints and contract addresses in the adapter config file
-3. Run the integration test suite against the new adapter
+2. Configure RPC endpoints and contract addresses in `lib/chain-registry/chains/<chain>.ts`
+3. Register it in `lib/chain-registry/index.ts` and update `DEFAULT_CHAIN_ID`
 4. Deploy — all agent logic, risk rules, and UI remain completely unchanged
 
-> **Estimated time to add a new chain to a running system: 1 to 3 days of engineering work**
+> **Current chain: 0G Newton Testnet (chainId 16600)**
+> Config: `lib/chain-registry/chains/zerog.ts` | SDK wrappers: `lib/zerog/`
+
+---
+
+## 2.4 0G Protocol Integration — Where Each Component Is Used
+
+The ATS is deployed on **0G Chain** and uses all four 0G protocol primitives. Each one maps directly to a layer of the system.
+
+### 0G Chain — Layer 3 (Chain Adapter)
+**File:** `lib/chain-registry/chains/zerog.ts`, `lib/agent-builder/zerog/provider.ts`
+
+0G Chain is the EVM-compatible execution layer where all on-chain actions happen.
+
+| System action | How 0G Chain is used |
+|---|---|
+| Agent 6 executes a swap | Signs and submits transaction to 0G DEX router |
+| Decision Receipt minting | Mints receipt as on-chain record (ERC-721 or native contract) |
+| Wallet connection | MetaMask connects to chainId 16600 via `wallet_addEthereumChain` |
+| Explorer links | All tx/address links resolve to `chainscan-newton.0g.ai` |
+
+---
+
+### 0G Storage — Persistent Agent Memory (KV + Log)
+**File:** `lib/zerog/storage.ts` | **Import:** `import { saveAgentMemory, loadAgentMemory, appendLog } from '@/lib/zerog'`
+
+0G Storage gives agents persistent memory that survives restarts and survives across devices. Two use patterns:
+
+| Pattern | Function | What is stored | Which agent |
+|---|---|---|---|
+| **KV — real-time state** | `saveAgentMemory()` / `loadAgentMemory()` | Current regime, open positions, risk params, last signal | All 6 agents |
+| **Log — append history** | `appendLog()` | Full conversation history, every Decision Receipt, every trade audit line | Conversation Layer, Orchestrator |
+
+**Decision Receipt persistence** — instead of writing receipts only to Postgres, each receipt is also uploaded to 0G Storage. The root hash is stored on-chain so any observer can retrieve the full receipt without trusting the platform.
+
+```typescript
+// Orchestrator writes a receipt after every trade decision
+const { rootHash } = await saveAgentMemory('receipt', decisionReceipt)
+// rootHash stored in Postgres AND in the on-chain contract for verifiability
+```
+
+---
+
+### 0G Compute — Decentralized AI Inference
+**File:** `lib/zerog/compute.ts` | **Import:** `import { computeInference, agentReason, streamComputeInference } from '@/lib/zerog'`
+
+0G Compute replaces centralized LLM APIs with verifiable decentralized inference. Models run on the 0G Compute network; sealed inference adds a ZK proof that the model ran correctly.
+
+| System component | Model used | Sealed? | What the call does |
+|---|---|---|---|
+| **Conversation Layer** | `qwen3-8b` | No | Generates plain-English explanations of Decision Receipts |
+| **Copilot tile (streaming)** | `qwen3-8b` | No | Streams live agent analysis to the terminal copilot tile |
+| **Signal Agent — causal validation** | `qwen3.6-plus` | **Yes** | Verifies a causal chain still holds before approving a signal |
+| **Risk Agent — decision gate** | `GLM-5-FP8` | **Yes** | Final pre-trade sanity check on high-value orders (> $50K) |
+| **Agent Builder — node reasoning** | `qwen3-8b` | No | Powers `ZeroGComputeNode` in the visual DAG builder |
+
+`sealed: true` is mandatory for any inference call that directly influences an on-chain transaction. The ZK proof (`proofRef`) is embedded in the Decision Receipt.
+
+```typescript
+// Risk Agent — sealed inference before approving high-value trade
+const { content, proofRef } = await computeInference({
+  model: 'qwen3.6-plus',
+  messages: [{ role: 'user', content: `Approve this trade? ${JSON.stringify(riskPayload)}` }],
+  sealed: true,
+})
+// proofRef → stored in Decision Receipt so anyone can verify the AI approved this
+```
+
+---
+
+### 0G DA — Data Availability for High-Volume Output
+**File:** `lib/zerog/da.ts` | **Import:** `import { postSwarmMessage, postInferenceResult, submitToDA } from '@/lib/zerog'`
+
+0G DA handles data that is too large or too frequent for on-chain storage but needs a verifiable availability proof.
+
+| Use case | Function | Volume | What the commitment proves |
+|---|---|---|---|
+| **Multi-agent swarm coordination** | `postSwarmMessage()` | Every inter-agent vote (~380ms cadence) | Planner → Executor messages are available to any auditor |
+| **Large inference outputs** | `postInferenceResult()` | Every `sealed: true` call result | Full LLM output is available off-chain at this commitment |
+| **Market data attestation** | `submitToDA()` | Batch tick data every 15 min | Raw price data used for a trade decision is permanently available |
+| **Agent log bulk export** | `submitToDA()` | On demand (weekly export) | Full agent activity log from 0G Storage can be bulk-verified |
+
+```typescript
+// Orchestrator posts the full vote tally to 0G DA after every decision
+const { commitment } = await postSwarmMessage({
+  from:   'orchestrator',
+  votes:  agentVotes,        // all 6 agent votes with confidence scores
+  regime: currentRegime,
+  result: 'EXECUTE',
+})
+// commitment → stored in Decision Receipt as proof the full vote is available
+```
 
 ---
 
@@ -128,7 +222,13 @@ RISK SIZING:   Kelly fraction, position size, stop-loss, max loss $/%
 CONSENSUS:     Final Orchestrator decision + full vote tally
 OUTCOME:       Actual P&L and deviation from prediction (post-close)
 
-On-chain variant: Receipt minted as NFT with cryptographic signature
+0G Storage fields (appended when stored on-chain):
+  storage_root_hash:   Content-addressed hash of the full receipt on 0G Storage
+  vote_da_commitment:  0G DA commitment of the full agent vote tally
+  inference_proof_ref: ZK proof reference from 0G Compute sealed inference (if used)
+
+On-chain variant: Receipt minted as on-chain record with storage_root_hash
+                  so any observer can retrieve and verify the full receipt
 ```
 
 ---
@@ -552,7 +652,8 @@ The binding constraint — Kelly or hard rule — always wins.
 | Sarcasm Detector | Custom fine-tuned BERT | Signal Agent — sarcasm correction |
 | Hidden Markov Model | hmmlearn | Regime Detection Agent |
 | Causal Discovery | DoWhy + CausalNex | Signal Agent — causal chain validation |
-| LLM (Conversation) | Claude API / GPT-4 API | Conversation Layer |
+| LLM (Conversation) | **0G Compute** (qwen3-8b) *primary* / Claude API / GPT-4 API *fallback* | Conversation Layer |
+| Sealed Inference (ZK) | **0G Compute** (qwen3.6-plus, GLM-5-FP8) | Signal Agent causal gate, Risk Agent pre-trade gate |
 
 ## 9.3 Execution & Data Feed Stack
 
@@ -569,9 +670,16 @@ The binding constraint — Kelly or hard rule — always wins.
 
 | Chain | Wallet Library | Execution Protocol | Receipt Format |
 |---|---|---|---|
+| **0G Newton Testnet** *(default)* | viem + wagmi v2 + RainbowKit | 0G DEX (UniswapV2-compatible) | On-chain contract + 0G Storage root hash |
 | Ethereum / Base / Arbitrum | ethers.js + ERC-4337 | Uniswap v3, GMX, dYdX | ERC-721 NFT |
 | Solana | @solana/web3.js + Keypair | Raydium, Jupiter, Drift | Metaplex NFT |
 | Any future chain | Chain-native SDK | Chain-native DEX | Chain-native NFT standard |
+
+**0G-specific adapter details:**
+- Chain config: `lib/chain-registry/chains/zerog.ts` (chainId 16600, RPC `evmrpc-testnet.0g.ai`)
+- Wallet provider: `connectWallet()` in `lib/agent-builder/zerog/provider.ts`
+- Receipt storage: Postgres row + 0G Storage blob (root hash anchored on-chain)
+- Swap router: `zerog_dex` / `zerog_dex_v2` (update in `zerog.ts` once live addresses are deployed)
 
 ---
 
