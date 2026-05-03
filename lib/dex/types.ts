@@ -24,6 +24,9 @@ export type DexMarket = {
   leverage: number | null;
   color: string;
   executionVenue: string;
+  /** Optional CTA target — e.g. perp markets link out to GMX while the in-app
+   * order form is locked behind PerpsLockedOverlay. */
+  externalUrl?: string;
   source: DexSource;
   updatedAt: string;
 };

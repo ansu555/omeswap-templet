@@ -241,6 +241,7 @@ function marketStaticFields(config: DexMarketConfig) {
     leverage: config.leverage,
     color: config.color,
     executionVenue: config.executionVenue,
+    externalUrl: config.externalUrl,
   };
 }
 

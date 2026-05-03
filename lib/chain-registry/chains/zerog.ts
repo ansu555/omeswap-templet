@@ -4,13 +4,12 @@
  *
  * 0G is an EVM-compatible Layer-1 built for AI and decentralized agent
  * infrastructure. It ships four core primitives:
- *   - 0G Chain      — EVM-compatible execution layer (chainId 16600)
+ *   - 0G Chain      — EVM-compatible execution layer (chainId 16661)
  *   - 0G Storage    — decentralized KV + Log storage for persistent agent memory
  *   - 0G DA         — infinitely scalable data availability layer
  *   - 0G Compute    — decentralized AI inference & training network
  *
- * Newton Testnet is currently the canonical deployment target.
- * Update RPC_URL and token addresses once 0G Mainnet launches.
+ * Targeting 0G Mainnet (chainId 16661).
  */
 
 import { defineChain } from 'viem'
@@ -19,17 +18,17 @@ import type { ChainConfig } from '../types'
 
 // ── Chain definition ─────────────────────────────────────────────────────────
 
-export const ZEROG_CHAIN_ID = 16600 // 0G Newton Testnet
+export const ZEROG_CHAIN_ID = 16661 // 0G Mainnet
 
-export const ZEROG_RPC = 'https://evmrpc-testnet.0g.ai'
-export const ZEROG_WSS = 'wss://evmws-testnet.0g.ai'
+export const ZEROG_RPC = 'https://evmrpc.0g.ai'
+export const ZEROG_WSS = 'wss://evmws.0g.ai'
 
 export const zeroGChain = defineChain({
   id: ZEROG_CHAIN_ID,
-  name: '0G Newton Testnet',
+  name: '0G Mainnet',
   nativeCurrency: {
-    name: 'Autonomy',
-    symbol: 'A0GI',
+    name: '0G',
+    symbol: '0G',
     decimals: 18,
   },
   rpcUrls: {
@@ -41,108 +40,114 @@ export const zeroGChain = defineChain({
   blockExplorers: {
     default: {
       name: '0G Chain Scan',
-      url: 'https://chainscan-newton.0g.ai',
+      url: 'https://chainscan.0g.ai',
     },
   },
-  testnet: true,
+  testnet: false,
 })
 
 /** EIP-3085 `wallet_addEthereumChain` params for MetaMask */
 export const ZEROG_CHAIN_PARAMS = {
   chainId: `0x${ZEROG_CHAIN_ID.toString(16)}` as const,
-  chainName: '0G Newton Testnet',
-  nativeCurrency: { name: 'Autonomy', symbol: 'A0GI', decimals: 18 },
+  chainName: '0G Mainnet',
+  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
   rpcUrls: [ZEROG_RPC],
-  blockExplorerUrls: ['https://chainscan-newton.0g.ai/'],
+  blockExplorerUrls: ['https://chainscan.0g.ai/'],
 } as const
 
-// ── 0G Protocol endpoints ────────────────────────────────────────────────────
+// ── 0G Protocol endpoints ─────────────────────────────────────────────────────
 
 /** 0G Storage indexer — KV store for real-time agent state */
-export const ZEROG_STORAGE_RPC = 'https://indexer-storage-testnet-standard.0g.ai'
+export const ZEROG_STORAGE_RPC = 'https://indexer-storage-mainnet-standard.0g.ai'
 
 /** 0G DA RPC — data availability layer for high-throughput blobs */
-export const ZEROG_DA_RPC = 'https://da-client-testnet.0g.ai'
+export const ZEROG_DA_RPC = 'https://da-client-mainnet.0g.ai'
 
 /** 0G Compute gateway — AI inference via qwen3-8b, GLM-5-FP8, etc. */
 export const ZEROG_COMPUTE_ENDPOINT = 'https://compute-api.0g.ai/v1'
 
-// ── Full ChainConfig ─────────────────────────────────────────────────────────
+// ── Jaine DEX addresses ───────────────────────────────────────────────────────
+// Sourced from environment variables — never hardcoded. When unset, the swap
+// UI renders a disabled button with "Jaine router not configured" and the
+// agent execution layer returns `pending_deployment` instead of attempting a
+// transaction against the zero address.
+//
+// Set in .env.local (or your deployment env):
+//   NEXT_PUBLIC_JAINE_ROUTER_ADDRESS=0x...
+//   NEXT_PUBLIC_JAINE_FACTORY_ADDRESS=0x...   # optional, only for dynamic pool discovery
+//
+// These are NEXT_PUBLIC_* so the wallet-side hook can read them in the
+// browser; the agent execution path on the server reads the same vars.
+
+const ZERO_ADDRESS: Address = '0x0000000000000000000000000000000000000000'
+
+function readEnvAddress(value: string | undefined): Address {
+  if (!value) return ZERO_ADDRESS
+  const trimmed = value.trim()
+  if (!/^0x[0-9a-fA-F]{40}$/.test(trimmed)) return ZERO_ADDRESS
+  return trimmed as Address
+}
+
+/** Jaine UniswapV2-style router on 0G Mainnet — set NEXT_PUBLIC_JAINE_ROUTER_ADDRESS to enable */
+export const JAINE_ROUTER_ADDRESS: Address = readEnvAddress(
+  process.env.NEXT_PUBLIC_JAINE_ROUTER_ADDRESS,
+)
+
+/** Jaine factory — only needed for dynamic pool discovery */
+export const JAINE_FACTORY_ADDRESS: Address = readEnvAddress(
+  process.env.NEXT_PUBLIC_JAINE_FACTORY_ADDRESS,
+)
+
+/** True only when both addresses look syntactically valid AND non-zero */
+export const JAINE_ROUTER_CONFIGURED: boolean = JAINE_ROUTER_ADDRESS !== ZERO_ADDRESS
+
+// ── Full ChainConfig ──────────────────────────────────────────────────────────
 
 export const zeroGConfig: ChainConfig = {
   chain: zeroGChain,
 
-  // W0G — wrapped native token used as intermediate hop in multi-hop swaps
-  // TODO: Replace with official W0G deployment address once 0G DEX launches on mainnet
-  nativeWrapped: '0x0000000000000000000000000000000000000001' as Address,
+  // W0G — wrapped native 0G token; used as intermediate hop in multi-hop swaps
+  nativeWrapped: '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c' as Address,
 
-  // Routing hubs: W0G first (deepest liquidity), USDC second (stablecoin hub)
-  // TODO: Update with live 0G DEX pool addresses
+  // Routing hubs: W0G first (deepest liquidity), USDC.e second (stablecoin hub)
   hubTokens: [
-    '0x0000000000000000000000000000000000000001' as Address, // W0G
-    '0x0000000000000000000000000000000000000002' as Address, // USDC on 0G
+    '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c' as Address, // W0G
+    '0x1f3aa82227281ca364bfb3d253b0f1af1da6473e' as Address, // USDC.e
   ],
 
-  explorerUrl: 'https://chainscan-newton.0g.ai',
+  explorerUrl: 'https://chainscan.0g.ai',
   explorerTxPath: '/tx/',
   explorerAddressPath: '/address/',
 
-  // DEX routers — 0G native DEX (UniswapV2-compatible)
-  // TODO: Replace placeholder addresses with official 0G DEX deployments
+  // DEX routers — Jaine (UniswapV2-compatible) on 0G Mainnet
   dexRouters: [
     {
-      id: 'zerog_dex',
-      name: '0G DEX',
+      id: 'jaine',
+      name: 'Jaine',
       type: 'uniswapV2',
-      routerAddress: '0x0000000000000000000000000000000000000010' as Address,
-    },
-    {
-      id: 'zerog_dex_v2',
-      name: '0G DEX V2',
-      type: 'uniswapV2',
-      routerAddress: '0x0000000000000000000000000000000000000011' as Address,
+      routerAddress: JAINE_ROUTER_ADDRESS,
+      factoryAddress: JAINE_FACTORY_ADDRESS,
     },
   ],
 
-  // Token list — update with live 0G token addresses
+  // Token list
   tokens: {
     W0G: {
-      address: '0x0000000000000000000000000000000000000001' as Address,
+      address: '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c' as Address,
       name: 'Wrapped 0G',
       symbol: 'W0G',
       decimals: 18,
     },
-    USDC: {
-      address: '0x0000000000000000000000000000000000000002' as Address,
-      name: 'USD Coin',
-      symbol: 'USDC',
+    'USDC.e': {
+      address: '0x1f3aa82227281ca364bfb3d253b0f1af1da6473e' as Address,
+      name: 'Bridged USDC',
+      symbol: 'USDC.e',
       decimals: 6,
       coingeckoId: 'usd-coin',
     },
-    USDT: {
-      address: '0x0000000000000000000000000000000000000003' as Address,
-      name: 'Tether USD',
-      symbol: 'USDT',
-      decimals: 6,
-      coingeckoId: 'tether',
-    },
-    WETH: {
-      address: '0x0000000000000000000000000000000000000004' as Address,
-      name: 'Wrapped Ether',
-      symbol: 'WETH',
-      decimals: 18,
-      coingeckoId: 'ethereum',
-    },
-    WBTC: {
-      address: '0x0000000000000000000000000000000000000005' as Address,
-      name: 'Wrapped Bitcoin',
-      symbol: 'WBTC',
-      decimals: 8,
-      coingeckoId: 'bitcoin',
-    },
   },
 
-  // TODO: Deploy OmeSwap contracts on 0G Chain and update these addresses
+  // TODO: Deploy OmeSwap contracts on 0G Mainnet and update these addresses
   omeswapPools: '0x0000000000000000000000000000000000000000' as Address,
   omeswapRouter: '0x0000000000000000000000000000000000000000' as Address,
 }

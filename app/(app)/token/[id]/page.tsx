@@ -13,7 +13,6 @@ import {
   SecurityAnalysis,
   RelatedTokens,
 } from "@/components/token-detail";
-import { SwapCardDex } from "@/components/trade/SwapCardDex";
 
 interface TokenData {
   id: string;
@@ -242,13 +241,12 @@ export default function TokenDetailPage() {
           />
         </div>
 
-        {/* Price Chart & Swap */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
+        {/* Price Chart */}
+        <div className="grid grid-cols-1 gap-6">
           <PriceChart
             basePrice={tokenData.price}
             priceChange24h={tokenData.priceChange24h}
           />
-          <SwapCardDex />
         </div>
 
         {/* Stats, Score Cards & About */}

@@ -1,9 +1,9 @@
 /**
  * Chain Registry — central lookup for all supported chain configs.
  *
- * Default chain: 0G Newton Testnet (chainId 16600)
+ * Default chain: 0G Mainnet (chainId 16661)
  * 0G is an EVM-compatible Layer-1 for AI agents with four core primitives:
- *   - 0G Chain    — EVM execution (chainId 16600)
+ *   - 0G Chain    — EVM execution (chainId 16661)
  *   - 0G Storage  — decentralized KV + Log for persistent agent memory
  *   - 0G DA       — infinitely scalable data availability
  *   - 0G Compute  — decentralized AI inference (qwen3, GLM-5-FP8, etc.)
@@ -17,13 +17,11 @@
 
 import type { ChainConfig, DexRouter, TokenInfo } from './types'
 import { zeroGConfig } from './chains/zerog'
-import { ethereumConfig } from './chains/ethereum'
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 const REGISTRY: Record<number, ChainConfig> = {
   [zeroGConfig.chain.id]: zeroGConfig,
-  [ethereumConfig.chain.id]: ethereumConfig,
 }
 
 export const DEFAULT_CHAIN_ID: number = zeroGConfig.chain.id
@@ -50,7 +48,7 @@ export function getSupportedChains(): ChainConfig[] {
   return Object.values(REGISTRY)
 }
 
-/** Returns the default chain ID (0G Newton Testnet: 16600) */
+/** Returns the default chain ID (0G Mainnet: 16661) */
 export function getDefaultChainId(): number {
   return DEFAULT_CHAIN_ID
 }
@@ -69,8 +67,8 @@ export function getDexRouters(chainId: number): DexRouter[] {
  * Builds a block-explorer URL for the given chain.
  *
  * @example
- *   getExplorerLink(16600, 'tx', '0xabc…')
- *   // → 'https://chainscan-newton.0g.ai/tx/0xabc…'
+ *   getExplorerLink(16661, 'tx', '0xabc…')
+ *   // → 'https://chainscan.0g.ai/tx/0xabc…'
  */
 export function getExplorerLink(
   chainId: number,

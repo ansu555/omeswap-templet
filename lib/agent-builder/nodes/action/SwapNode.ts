@@ -9,10 +9,14 @@ import { useTransactionStore } from "@/store/transaction-store";
 import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 import { normalizeWalletAddress } from "@/lib/onboarding";
 
+// Standard UniswapV2 router ABI — used by Jaine on 0G Mainnet and any other
+// V2-compatible router we register. Native-coin paths use the canonical "ETH"
+// function names regardless of the chain's native symbol (this is how every
+// V2 fork ships).
 const ROUTER_ABI = [
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
-  "function swapExactAVAXForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
-  "function swapExactTokensForAVAX(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
   "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
 ];
 
@@ -66,7 +70,7 @@ export class SwapNode extends BaseNode {
       key: "tokenIn",
       label: "Token In",
       type: "select",
-      // native coin uses swapExactAVAXForTokens, no approval needed
+      // native coin uses swapExactETHForTokens (UniswapV2 naming), no approval needed
       options: [_nativeSymbol, ..._tokenSymbols],
       default: _nativeSymbol,
     },
@@ -123,14 +127,14 @@ export class SwapNode extends BaseNode {
 
     let tx;
 
-    // ── Path A: native coin → ERC-20 (swapExactAVAXForTokens) ──────────────
+    // ── Path A: native coin → ERC-20 (swapExactETHForTokens) ───────────────
     if (tokenIn === _nativeSymbol) {
       const amountInWei = ethers.parseEther(amountIn.toString());
       const path = [_config.nativeWrapped, outToken.address];
       const amounts = await router.getAmountsOut(amountInWei, path);
       const amountOutMin = (amounts[1] * slippageBps) / BigInt(10000);
 
-      tx = await router.swapExactAVAXForTokens(
+      tx = await router.swapExactETHForTokens(
         amountOutMin,
         path,
         context.walletAddress,

@@ -11,14 +11,17 @@ export type TransactionType =
   | "ADD_LIQUIDITY"
   | "REMOVE_LIQUIDITY"
   | "MINT"
-  | "APPROVAL";
+  | "APPROVAL"
+  | "PERP_OPEN"
+  | "PERP_CLOSE";
 
 export type TransactionSource =
   | "dex-swap"
   | "dex-aggregator"
   | "liquidity"
   | "token-mint"
-  | "agent-builder";
+  | "agent-builder"
+  | "agent-perp-sim";
 
 export interface StoredTransaction {
   id: string;
@@ -33,6 +36,16 @@ export interface StoredTransaction {
   source: TransactionSource;
   dex?: string;
   explorerUrl: string;
+  /** PERP_* only — "long" or "short" direction */
+  direction?: "long" | "short";
+  /** PERP_* only — referenced market id, e.g. "gmx-btc-usd" */
+  marketId?: string;
+  /** PERP_* only — entry price recorded at the time of the simulated open */
+  entryPrice?: number;
+  /** PERP_* only — leverage selected by the agent (1 if unspecified) */
+  leverage?: number;
+  /** When true, this transaction was simulated (paper-traded) — explorerUrl is informational */
+  simulated?: boolean;
 }
 
 interface TransactionStore {
@@ -73,10 +86,16 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
     set((state) => {
       if (state.transactions.some((t) => t.txHash === tx.txHash)) return state;
 
+      // Simulated trades render an internal explainer URL instead of the chain
+      // explorer (which would 404 on a synthetic tx hash).
+      const explorerUrl = tx.simulated
+        ? `/library?simulated=${encodeURIComponent(tx.txHash)}`
+        : getExplorerLink(getDefaultChainId(), 'tx', tx.txHash);
+
       const newTx: StoredTransaction = {
         ...tx,
         id: crypto.randomUUID(),
-        explorerUrl: getExplorerLink(getDefaultChainId(), 'tx', tx.txHash),
+        explorerUrl,
       };
       const updated = [newTx, ...state.transactions];
       persist(updated);

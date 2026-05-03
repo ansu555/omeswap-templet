@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./terminal.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Trading Terminal · Omeswap",
   description:

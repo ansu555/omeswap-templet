@@ -11,12 +11,14 @@ export interface TokenInfo {
 }
 
 export interface DexRouter {
-  /** Stable identifier used in code, e.g. "traderjoe" | "pangolin" | "traderjoe_v2" */
+  /** Stable identifier used in code, e.g. "jaine" | "traderjoe" | "traderjoe_v2" */
   id: string
   /** Human-readable label shown in the UI */
   name: string
   type: 'uniswapV2' | 'traderJoeV2' | 'custom'
   routerAddress: Address
+  /** Optional UniswapV2-style factory — only needed for dynamic pool discovery */
+  factoryAddress?: Address
   /** Required for traderJoeV2 — the LBQuoter contract */
   quoterAddress?: Address
 }

@@ -7,16 +7,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import type { DexMarket } from "@/lib/dex/types";
-import { UniswapSwapCard } from "@/components/trade/UniswapSwapCard";
-import type { SwapToken } from "@/hooks/use-uniswap-swap";
-import { ethereumConfig } from "@/lib/chain-registry/chains/ethereum";
-
-function getEthDecimals(address: string): number {
-  const match = Object.values(ethereumConfig.tokens).find(
-    (t) => t.address.toLowerCase() === address.toLowerCase()
-  );
-  return match?.decimals ?? 18;
-}
+import { JaineSwapCard } from "@/components/terminal/JaineSwapCard";
+import { PerpsLockedOverlay } from "./PerpsLockedOverlay";
+import { getDexMarketConfig } from "@/lib/dex/markets";
 
 // ── Agent Activity Strip ──────────────────────────────────────────────────────
 
@@ -368,35 +361,14 @@ export function TradePanel({ marketId }: { marketId: string }) {
   const route = market?.executionVenue ?? "Swap adapter";
   const liquidity = market?.liquidityUsd ?? 0;
   const isPerp = market?.kind === "perp";
-  const isEthSpot = market?.network === "eth" && market?.kind === "spot";
+  const is0gSpot = market?.network === "0g" && market?.kind === "spot";
 
-  const swapTokenBase = useMemo<SwapToken | null>(() => {
-    if (!market || !isEthSpot) return null;
-    return {
-      address: market.baseToken.address as `0x${string}`,
-      symbol: market.baseToken.symbol,
-      name: market.baseToken.name,
-      decimals: getEthDecimals(market.baseToken.address),
-    };
-  }, [market, isEthSpot]);
-
-  const swapTokenQuote = useMemo<SwapToken | null>(() => {
-    if (!market || !isEthSpot) return null;
-    return {
-      address: market.quoteToken.address as `0x${string}`,
-      symbol: market.quoteToken.symbol,
-      name: market.quoteToken.name,
-      decimals: getEthDecimals(market.quoteToken.address),
-    };
-  }, [market, isEthSpot]);
+  // Static market config for externalUrl (not in the live DexMarket API response)
+  const marketCfg = getDexMarketConfig(marketId);
 
   const fundingSymbol = isPerp
     ? market?.quoteToken.symbol ?? "USD"
-    : market?.symbol === "USDC"
-      ? market.quoteToken.symbol
-      : market?.chainId === 16601
-        ? "USDC.e"
-        : "USDC";
+    : market?.quoteToken.symbol ?? "USDC.e";
 
   const preview = useMemo(() => {
     const amountValue = Math.max(0, Number(amount) || 0);
@@ -433,6 +405,12 @@ export function TradePanel({ marketId }: { marketId: string }) {
       {/* Agent activity strip — collapsible history of last 5 agent-initiated trades */}
       <AgentActivityStrip address={address} />
 
+      {/* 0G spot markets → self-contained Jaine swap UI */}
+      {is0gSpot ? (
+        <JaineSwapCard />
+      ) : (
+      /* Perp / other markets → standard order form; perps get a blur overlay */
+      <div className="relative flex-1 flex flex-col min-h-0">
       <div className="grid grid-cols-2 border-b border-border">
         <button
           onClick={() => setSide("buy")}
@@ -542,36 +520,37 @@ export function TradePanel({ marketId }: { marketId: string }) {
         </div>
       </div>
 
-      {isEthSpot && swapTokenBase && swapTokenQuote ? (
-        <div className="p-3 border-t border-border">
-          <UniswapSwapCard
-            tokenIn={side === "buy" ? swapTokenQuote : swapTokenBase}
-            tokenOut={side === "buy" ? swapTokenBase : swapTokenQuote}
-            marketId={marketId}
-          />
-        </div>
-      ) : (
-        <div className="p-4 space-y-3 border-t border-border">
-          <button className="w-full h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)]">
-            <Image src="/logo.png" alt="" width={18} height={18} className="rounded-full" /> Connect Wallet
-          </button>
+      <div className="p-4 space-y-3 border-t border-border">
+        <button className="w-full h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)]">
+          <Image src="/logo.png" alt="" width={18} height={18} className="rounded-full" /> Connect Wallet
+        </button>
 
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Total Balance</span>
-            <span className="tabular">$0.00</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Available Balance</span>
-            <span className="tabular">$0.00</span>
-          </div>
-
-          <button className="w-full h-10 rounded-lg bg-primary/30 text-foreground font-medium hover:bg-primary/40">
-            Deposit
-          </button>
-          <button className="w-full h-10 rounded-lg bg-panel text-muted-foreground font-medium" disabled>
-            Withdraw
-          </button>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Total Balance</span>
+          <span className="tabular">$0.00</span>
         </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Available Balance</span>
+          <span className="tabular">$0.00</span>
+        </div>
+
+        <button className="w-full h-10 rounded-lg bg-primary/30 text-foreground font-medium hover:bg-primary/40">
+          Deposit
+        </button>
+        <button className="w-full h-10 rounded-lg bg-panel text-muted-foreground font-medium" disabled>
+          Withdraw
+        </button>
+      </div>
+
+      {/* Frosted-glass overlay — covers the order form for perp markets; underlying
+          chart / depth / history continue rendering behind the blur */}
+      {isPerp && (
+        <PerpsLockedOverlay
+          externalUrl={marketCfg.externalUrl}
+          dex={marketCfg.dex}
+        />
+      )}
+      </div>
       )}
     </aside>
   );

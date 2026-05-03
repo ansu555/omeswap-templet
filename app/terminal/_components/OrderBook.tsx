@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Bot } from "lucide-react";
 import type { DexDepth, DexDepthRow, DexMarket, DexTrade } from "@/lib/dex/types";
+import { AgentTradesPanel } from "./AgentTradesPanel";
 
-type Tab = "depth" | "swaps";
+type Tab = "depth" | "swaps" | "agent";
 
 type DepthResponse = {
   depth: DexDepth;
@@ -98,18 +100,17 @@ export function OrderBook({ marketId }: { marketId: string }) {
     [asks, bids],
   );
   const sizeLabel = market?.symbol ?? "Token";
-  const isPerp = market?.kind === "perp";
 
   return (
     <div className="w-[340px] shrink-0 border-r border-border bg-background flex flex-col">
-      <div className="grid grid-cols-2 border-b border-border text-sm">
+      <div className="grid grid-cols-3 border-b border-border text-[12px]">
         <button
           onClick={() => setActiveTab("depth")}
           className={`py-3 font-medium ${
             activeTab === "depth" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Liquidity Depth
+          Depth
         </button>
         <button
           onClick={() => setActiveTab("swaps")}
@@ -119,9 +120,21 @@ export function OrderBook({ marketId }: { marketId: string }) {
         >
           Swaps
         </button>
+        <button
+          onClick={() => setActiveTab("agent")}
+          className={`py-3 font-medium flex items-center justify-center gap-1 ${
+            activeTab === "agent" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+          title="Agent-initiated trades on this market"
+        >
+          <Bot size={11} />
+          Agent
+        </button>
       </div>
 
-      {activeTab === "depth" ? (
+      {activeTab === "agent" ? (
+        <AgentTradesPanel marketId={marketId} baseSymbol={market?.symbol} />
+      ) : activeTab === "depth" ? (
         <div className="relative flex-1 flex flex-col min-h-0">
           <div className="grid grid-cols-3 px-3 py-2 text-[11px] text-muted-foreground">
             <span>Price</span>
@@ -158,8 +171,6 @@ export function OrderBook({ marketId }: { marketId: string }) {
           <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
             Synthetic AMM depth from pool liquidity, not centralized limit orders.
           </div>
-
-          {isPerp && <ComingSoonOverlay />}
         </div>
       ) : (
         <div className="relative flex-1 flex flex-col min-h-0">
@@ -188,7 +199,6 @@ export function OrderBook({ marketId }: { marketId: string }) {
               <TradeRowView key={`${trade.id}-${index}`} trade={trade} muted={!trades.length} />
             ))}
           </div>
-          {isPerp && <ComingSoonOverlay />}
         </div>
       )}
     </div>
@@ -296,15 +306,3 @@ function fractionDigitsForPrice(value: number) {
   return 8;
 }
 
-function ComingSoonOverlay() {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 backdrop-blur-sm bg-background/60">
-      <span className="rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-        Coming Soon
-      </span>
-      <p className="max-w-[200px] text-center text-xs text-muted-foreground leading-relaxed">
-        Perp market data is not publicly available yet
-      </p>
-    </div>
-  );
-}

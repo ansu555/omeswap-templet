@@ -5,7 +5,7 @@
  * as the single backward-compatible import point for the rest of the codebase.
  * To change addresses, update lib/chain-registry/chains/zerog.ts.
  *
- * Default chain: 0G Newton Testnet (chainId 16600)
+ * Default chain: 0G Mainnet (chainId 16661)
  */
 
 import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry'
@@ -23,38 +23,22 @@ export const CONTRACT_ADDRESSES = {
 
 // ── DEX routers ───────────────────────────────────────────────────────────────
 
-const _dexV1 = _cfg.dexRouters.find(r => r.id === 'zerog_dex')
-const _dexV2 = _cfg.dexRouters.find(r => r.id === 'zerog_dex_v2')
+const _jaine = _cfg.dexRouters.find(r => r.id === 'jaine')
 
 export const DEX_ROUTERS = {
-  ZEROG_DEX:    (_dexV1?.routerAddress ?? '0x0000000000000000000000000000000000000010') as Address,
-  ZEROG_DEX_V2: (_dexV2?.routerAddress ?? '0x0000000000000000000000000000000000000011') as Address,
+  JAINE: (_jaine?.routerAddress ?? '0x0000000000000000000000000000000000000000') as Address,
 } as const
 
 /** Wrapped native 0G token address */
 export const W0G_ADDRESS = _cfg.nativeWrapped
 
-/** @deprecated Use W0G_ADDRESS. Kept for hook backward-compatibility. */
-export const WAVAX_ADDRESS = _cfg.nativeWrapped
-
 // ── Token addresses ───────────────────────────────────────────────────────────
 
 export const TOKEN_ADDRESSES: { [key: string]: { address: Address; name: string; symbol: string; decimals: number } } = {
-  W0G:  _rt.W0G  ?? { address: '0x0000000000000000000000000000000000000001' as Address, name: 'Wrapped 0G', symbol: 'W0G', decimals: 18 },
-  USDC: _rt.USDC ?? { address: '0x0000000000000000000000000000000000000002' as Address, name: 'USD Coin', symbol: 'USDC', decimals: 6 },
-  USDT: _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
-  WETH: _rt.WETH ?? { address: '0x0000000000000000000000000000000000000004' as Address, name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
-  WBTC: _rt.WBTC ?? { address: '0x0000000000000000000000000000000000000005' as Address, name: 'Wrapped Bitcoin', symbol: 'WBTC', decimals: 8 },
-  // Legacy aliases for hooks/components that use old Avalanche key names
-  WAVAX:    _rt.W0G  ?? { address: '0x0000000000000000000000000000000000000001' as Address, name: 'Wrapped 0G', symbol: 'W0G', decimals: 18 },
-  WETHe:    _rt.WETH ?? { address: '0x0000000000000000000000000000000000000004' as Address, name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
-  WBTCe:    _rt.WBTC ?? { address: '0x0000000000000000000000000000000000000005' as Address, name: 'Wrapped Bitcoin', symbol: 'WBTC', decimals: 8 },
-  USDTe:    _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
-  tUSDC:    _rt.USDC ?? { address: '0x0000000000000000000000000000000000000002' as Address, name: 'USD Coin', symbol: 'USDC', decimals: 6 },
-  tUSDT:    _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
+  W0G:    _rt['W0G']    ?? { address: '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c' as Address, name: 'Wrapped 0G',   symbol: 'W0G',    decimals: 18 },
+  'USDC.e': _rt['USDC.e'] ?? { address: '0x1f3aa82227281ca364bfb3d253b0f1af1da6473e' as Address, name: 'Bridged USDC', symbol: 'USDC.e', decimals: 6  },
 }
 
 export const TOKENS = TOKEN_ADDRESSES
 export const MAINNET_TOKENS = TOKEN_ADDRESSES
-
 export const TOKEN_LIST = Object.values(TOKEN_ADDRESSES)

@@ -25,6 +25,8 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { DexCandle, DexMarket } from "@/lib/dex/types";
+import { getDexMarketConfig } from "@/lib/dex/markets";
+import { PerpsLockedOverlay } from "./PerpsLockedOverlay";
 
 type BtcCandle = CandlestickData<UTCTimestamp> & {
   volume: number;
@@ -421,8 +423,11 @@ export function Chart({ marketId }: { marketId: string }) {
     );
   }, [latestCandle]);
 
+  const marketCfg = getDexMarketConfig(marketId);
+  const isPerp = marketCfg.kind === "perp";
+
   return (
-    <div className="flex-1 flex flex-col bg-background border-r border-border min-w-[460px]">
+    <div className="flex-1 flex flex-col bg-background border-r border-border min-w-[460px] relative">
       <div className="flex items-center gap-4 px-4 h-16 border-b border-border overflow-hidden">
         <button className="text-muted-foreground hover:text-foreground" aria-label="Previous market">
           <ChevronLeft className="h-4 w-4" />
@@ -561,6 +566,14 @@ export function Chart({ marketId }: { marketId: string }) {
         </div>
         <BottomPanel activeTab={bottomTab} stats={stats} />
       </div>
+
+      {/* Panel-level perps overlay — chart / positions / receipts visible behind the blur */}
+      {isPerp && (
+        <PerpsLockedOverlay
+          externalUrl={marketCfg.externalUrl}
+          dex={marketCfg.dex}
+        />
+      )}
     </div>
   );
 }

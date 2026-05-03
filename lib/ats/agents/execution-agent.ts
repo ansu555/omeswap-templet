@@ -9,9 +9,9 @@
  *   - Signs and submits the swap using the agent burner wallet (viem)
  *
  * Router dispatch:
- *   chainId == 16600 (0G) + real router address → UniswapV2 `swapExactTokensForTokens`
- *   chainId == 16600 (0G) + placeholder address → returns pending_deployment status
- *   chainId == 1 (Ethereum) → Uniswap V3 `exactInputSingle` via SwapRouter02
+ *   chainId == 16661 (0G Mainnet) + real router address → UniswapV2 `swapExactTokensForTokens`
+ *   chainId == 16661 (0G Mainnet) + placeholder address → returns pending_deployment status
+ *   other chains + custom router → Uniswap V3 `exactInputSingle` via SwapRouter02
  *
  * Emits:
  *   agent.thinking      — start
@@ -30,7 +30,34 @@ import {
 import type { RunEvent, RiskSizing } from '@/lib/ats/types'
 import { getOrCreateAgentWallet } from '@/lib/agent-wallet/manager'
 import { getChainConfig } from '@/lib/chain-registry'
-import { SWAP_ROUTER_ABI, ERC20_ABI } from '@/lib/uniswap/constants'
+
+// Minimal ERC-20 ABI — balanceOf / allowance / approve
+const ERC20_ABI = [
+  { name: 'balanceOf', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }] },
+  { name: 'allowance', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }] },
+  { name: 'approve', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }] },
+] as const
+
+// Uniswap V3 SwapRouter02 ABI — exactInputSingle (used for non-V2 chains)
+const SWAP_ROUTER_ABI = [
+  { name: 'exactInputSingle', type: 'function', stateMutability: 'payable',
+    inputs: [{ name: 'params', type: 'tuple', components: [
+      { name: 'tokenIn', type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'fee', type: 'uint24' },
+      { name: 'recipient', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'amountOutMinimum', type: 'uint256' },
+      { name: 'sqrtPriceLimitX96', type: 'uint160' },
+    ]}],
+    outputs: [{ name: 'amountOut', type: 'uint256' }] },
+] as const
 
 // ── Result type ───────────────────────────────────────────────────────────────
 
@@ -250,7 +277,7 @@ async function executeV2Swap(
       token_in: decision === 'BUY' ? 'USDC' : resolveTokenSymbol(ticker),
       token_out: decision === 'BUY' ? resolveTokenSymbol(ticker) : 'USDC',
       chain_id: chainConfig.chain.id,
-      error: `0G DEX router not yet deployed. Trade queued — update lib/chain-registry/chains/zerog.ts with live router address to enable execution.`,
+      error: `Jaine router address not configured. Set NEXT_PUBLIC_JAINE_ROUTER_ADDRESS in .env to enable execution.`,
     }
   }
 
@@ -346,7 +373,7 @@ async function executeV2Swap(
  * @param decision   "BUY" or "SELL"
  * @param sizing     RiskSizing output from the Risk Agent
  * @param userWallet Authenticated user's wallet address
- * @param chainId    Target chain (default: 0G = 16600)
+ * @param chainId    Target chain (default: 0G Mainnet = 16661)
  */
 export async function runExecutionAgent(
   ticker: string,

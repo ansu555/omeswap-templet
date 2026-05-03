@@ -11,6 +11,7 @@ import { PreviousValueNode } from './logic/PreviousValueNode'
 import { AccumulatorNode } from './logic/AccumulatorNode'
 import { MovingAverageNode } from './logic/MovingAverageNode'
 import { SwapNode } from './action/SwapNode'
+import { LongShortNode } from './action/LongShortNode'
 import { LimitOrderNode } from './action/LimitOrderNode'
 import { NotificationNode } from './action/NotificationNode'
 import { AddChartMarkerNode } from './action/AddChartMarkerNode'
@@ -62,6 +63,7 @@ export const NODE_REGISTRY: Record<string, NodeRegistryEntry> = {
   accumulator:     { cls: AccumulatorNode,    meta: meta(AccumulatorNode) },
   moving_average:  { cls: MovingAverageNode,  meta: meta(MovingAverageNode) },
   swap:           { cls: SwapNode,          meta: meta(SwapNode) },
+  long_short:     { cls: LongShortNode,     meta: meta(LongShortNode) },
   limit_order:    { cls: LimitOrderNode,    meta: meta(LimitOrderNode) },
   notification:     { cls: NotificationNode,     meta: meta(NotificationNode) },
   add_chart_marker: { cls: AddChartMarkerNode,  meta: meta(AddChartMarkerNode) },

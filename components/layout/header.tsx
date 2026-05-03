@@ -3,14 +3,14 @@
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "./logo";
-import { Compass, ArrowLeftRight, Wallet, Receipt, Bot, Store, Library, FlaskConical } from "lucide-react";
+import { Compass, Droplet, Wallet, Receipt, Bot, Store, Library, FlaskConical } from "lucide-react";
 import { gsap } from "gsap";
 import { WalletConnect } from "@/components/features/wallet";
 import { NavBar } from "@/components/ui/nav-bar";
 
 const navItems = [
   { name: "Explore", url: "/explore", icon: Compass },
-  { name: "Trade", url: "/trade", icon: ArrowLeftRight },
+  { name: "Pools", url: "/pools", icon: Droplet },
   { name: "Terminal", url: "/terminal", icon: FlaskConical },
   { name: "Research", url: "/research", icon: Bot },
   { name: "Portfolio", url: "/portfolio", icon: Wallet },
