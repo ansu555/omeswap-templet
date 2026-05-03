@@ -19,15 +19,15 @@ export function Header() {
         <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
           Explore <ChevronDown className="h-3.5 w-3.5" />
         </button>
-        <button className="text-muted-foreground hover:text-foreground">Trade</button>
-        <button className="text-foreground border-b-2 border-primary pb-[18px] -mb-[18px]">Perps</button>
+        <button className="text-foreground border-b-2 border-primary pb-[18px] -mb-[18px]">Trade</button>
+        <button className="text-muted-foreground hover:text-foreground">Agents</button>
         <button className="text-muted-foreground hover:text-foreground">Portfolio</button>
       </nav>
       <div className="flex-1 max-w-2xl mx-auto">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
-            placeholder="Search tokens, perps, wallets"
+            placeholder="Search coins, perps, wallets"
             className="w-full bg-panel border border-border rounded-full pl-9 pr-10 h-9 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">/</span>
