@@ -1,7 +1,7 @@
 # Graph Report - /home/anik2003/Documents/omeswap  (2026-05-03)
 
 ## Corpus Check
-- 457 files · ~596,662 words
+- 457 files · ~596,657 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -2422,11 +2422,11 @@ _Questions this graph is uniquely positioned to answer:_
 - **What is the exact relationship between `Avalanche DEX (README)` and `Omeswap on 0G Chain (dev guide)`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
 - **Why does `GET()` connect `Community 0` to `Community 1`, `Community 18`, `Community 25`?**
-  _High betweenness centrality (0.034) - this node is a cross-community bridge._
+  _High betweenness centrality (0.023) - this node is a cross-community bridge._
 - **Why does `runBot()` connect `Community 1` to `Community 0`, `Community 4`?**
-  _High betweenness centrality (0.018) - this node is a cross-community bridge._
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **Why does `getIndicator()` connect `Community 0` to `Community 6`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Are the 21 inferred relationships involving `POST()` (e.g. with `isValidWalletAddress()` and `isValidRiskResponses()`) actually correct?**
   _`POST()` has 21 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 17 inferred relationships involving `GET()` (e.g. with `AgentBuilderContent()` and `isValidWalletAddress()`) actually correct?**
