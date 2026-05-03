@@ -20725,8 +20725,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/lib/zerog/private-strategy.ts",
       "source_location": "L235",
       "weight": 1.0,
-      "_src": "private_strategy_generatehumansummary",
-      "_tgt": "compute_computeinference",
+      "_src": "compute_computeinference",
+      "_tgt": "private_strategy_generatehumansummary",
       "source": "compute_computeinference",
       "target": "private_strategy_generatehumansummary"
     },
@@ -20941,8 +20941,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/lib/zerog/private-strategy.ts",
       "source_location": "L161",
       "weight": 1.0,
-      "_src": "private_strategy_sealstrategypayload",
-      "_tgt": "storage_uploadtostorage",
+      "_src": "storage_uploadtostorage",
+      "_tgt": "private_strategy_sealstrategypayload",
       "source": "storage_uploadtostorage",
       "target": "private_strategy_sealstrategypayload"
     },
@@ -20965,8 +20965,8 @@
       "source_file": "/home/anik2003/Documents/omeswap/lib/zerog/private-strategy.ts",
       "source_location": "L185",
       "weight": 1.0,
-      "_src": "private_strategy_unsealstrategypayload",
-      "_tgt": "storage_downloadfromstorage",
+      "_src": "storage_downloadfromstorage",
+      "_tgt": "private_strategy_unsealstrategypayload",
       "source": "storage_downloadfromstorage",
       "target": "private_strategy_unsealstrategypayload"
     },
