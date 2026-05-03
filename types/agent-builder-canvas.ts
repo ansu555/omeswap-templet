@@ -27,6 +27,18 @@ export interface OHLCVCandle {
   volume: number;
 }
 
+export interface ChartExecutionAccess {
+  getCandles: () => OHLCVCandle[];
+  getIndicator: (definitionId: string, params?: Record<string, number | string>) => Record<string, (number | null)[]>;
+  getActiveSymbol: () => { symbol: string; address: string; name: string } | null;
+  addMarker: (marker: {
+    time: number;
+    color: string;
+    shape: "arrowUp" | "arrowDown" | "circle";
+    text?: string;
+  }) => void;
+}
+
 export interface ExecutionContext {
   walletAddress: string | null;
   provider: unknown;
@@ -43,6 +55,11 @@ export interface ExecutionContext {
     shape: "arrowUp" | "arrowDown" | "circle";
   }) => void;
   backtestCandle?: OHLCVCandle;
+  /**
+   * Live terminal chart access. Present only when the bot runs inside an active
+   * terminal session. Nodes should treat its absence as the backtest path.
+   */
+  chart?: ChartExecutionAccess;
 }
 
 export interface LogEntry {
