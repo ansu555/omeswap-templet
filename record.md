@@ -11,3 +11,17 @@ changes: reverted latest 3 commits from branch history
 user: ansu555
 branch: agents
 changes: implemented Phase 0 foundation — ats/ package (config, models, data, api), docker-compose, Dockerfile, requirements.txt, .env.example; smoke-tested with Python 3.12 venv via uv
+
+[2026-05-03 12:00]
+user: ansu555
+branch: agents
+changes: implemented Phase 1 — Agent 1 data ingestion (binance_ws, coingecko_poller, news_poller, onchain_watcher, normalizer, agent1_data); added websockets>=12.0 to requirements.txt
+
+[2026-05-03 14:30]
+user: ansu555
+branch: agents
+changes: implemented Phase 2 — Agent 4 regime detection; generic price_reader/feature_builder/funding_rate supports any token; HMM wrapper + training script with --coin/--days flags
+[2026-05-03 00:00]
+user: ansu555
+branch: agents
+changes: implemented Phase 3 — Agent 2 signal agent; FinBERT sentiment module, technicals (MACD/BB %B), combiner, agent2_signal.py; writes signal:latest:{TICKER} to Redis
