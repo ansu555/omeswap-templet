@@ -129,7 +129,7 @@ async function persistReceipt(receipt: DecisionReceipt): Promise<string | null> 
   try {
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
-      .from('decision_receipts')
+      .from('ats_receipts')
       .insert({
         run_id:            receipt.run_id,
         user_wallet:       receipt.user_wallet.toLowerCase(),
