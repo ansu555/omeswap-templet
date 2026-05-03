@@ -1,7 +1,7 @@
 # Graph Report - /home/anik2003/Documents/omeswap  (2026-05-03)
 
 ## Corpus Check
-- 556 files · ~623,998 words
+- 556 files · ~697,417 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -392,8 +392,8 @@
   app/(app)/transactions/page.tsx → /home/anik2003/Documents/omeswap/store/transaction-store.ts
 - `GET()` --calls--> `getDexMarkets()`  [INFERRED]
   /home/anik2003/Documents/omeswap/app/api/user-settings/route.ts → /home/anik2003/Documents/omeswap/lib/dex/geckoterminal.ts
-- `ConfigPanel()` --calls--> `GET()`  [INFERRED]
-  /home/anik2003/Documents/omeswap/components/agent-builder/canvas/ConfigPanel.tsx → /home/anik2003/Documents/omeswap/app/api/user-settings/route.ts
+- `GET()` --calls--> `ConfigPanel()`  [INFERRED]
+  /home/anik2003/Documents/omeswap/app/api/user-settings/route.ts → /home/anik2003/Documents/omeswap/components/agent-builder/canvas/ConfigPanel.tsx
 - `Agent 6 — Execution Agent.  Responsibilities:   1. Receive an approved RiskDecis` --uses--> `AgentState`  [INFERRED]
   /home/anik2003/Documents/omeswap/ats/agents/agent6_execution.py → /home/anik2003/Documents/omeswap/ats/models/state.py
 - `Launch the stop-loss background monitor (call once at API startup).` --uses--> `AgentState`  [INFERRED]
@@ -2383,11 +2383,11 @@ Nodes (1): app/(app)/trade/page.tsx
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `GET()` connect `Community 0` to `Community 1`, `Community 34`, `Community 3`, `Community 2`, `Community 4`, `Community 5`, `Community 10`, `Community 13`, `Community 14`, `Community 15`, `Community 16`, `Community 30`?**
-  _High betweenness centrality (0.168) - this node is a cross-community bridge._
-- **Why does `runOrchestrator()` connect `Community 8` to `Community 11`, `Community 13`?**
-  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+  _High betweenness centrality (0.157) - this node is a cross-community bridge._
 - **Why does `runBot()` connect `Community 10` to `Community 0`, `Community 5`, `Community 6`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+  _High betweenness centrality (0.027) - this node is a cross-community bridge._
+- **Why does `getChainConfig()` connect `Community 13` to `Community 0`?**
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Are the 64 inferred relationships involving `GET()` (e.g. with `AgentBuilderContent()` and `requireWallet()`) actually correct?**
   _`GET()` has 64 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 20 inferred relationships involving `POST()` (e.g. with `requireWallet()` and `createSupabaseAdminClient()`) actually correct?**
