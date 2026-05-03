@@ -35,9 +35,10 @@ def test_freshness_score():
     from ats.agents.normalizer import freshness_score
 
     now = datetime.now(timezone.utc)
-    check("freshness_score: brand-new packet = 1.0",
-          freshness_score(now) == 1.0,
-          f"got {freshness_score(now)}")
+    score_now = freshness_score(now)
+    check("freshness_score: brand-new packet ≈ 1.0 (within 1ms tolerance)",
+          score_now > 0.9999,
+          f"got {score_now}")
 
     half_hour_ago = now - timedelta(minutes=30)
     score = freshness_score(half_hour_ago)
@@ -158,27 +159,6 @@ async def _run_normalization_loop_test():
     mock_redis = AsyncMock()
     mock_redis.lpush = AsyncMock()
     mock_redis.ltrim = AsyncMock()
-
-    with patch("ats.data.redis_client.get_redis", return_value=mock_redis):
-        # ── packet 1: valid price packet (binance) ──────────────────────────
-        price_raw = {
-            "source": "binance",
-            "type": "price",
-            "ticker": "BTC",
-            "payload": {"price": 67000.0, "volume_24h": 12345.0,
-                        "change_pct": 1.2, "bid": 66990.0, "ask": 67010.0},
-        }
-        await raw_queue.put(price_raw)
-        await norm_mod.normalization_loop().__anext__()  # not iterable — run once differently
-
-    # normalization_loop is a coroutine, not a generator — use a task approach
-    norm_mod._dedup.clear()
-    while not raw_queue.empty():
-        raw_queue.get_nowait()
-    while not normalized_queue.empty():
-        normalized_queue.get_nowait()
-
-    packets_out = []
 
     async def run_n_packets(raw_packets: list[dict], n: int) -> list:
         """Put n raw packets in, run loop n times, collect output."""

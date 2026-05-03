@@ -35,3 +35,6 @@ langchain-core>=0.2.0
 # Phase 7 — Execution agent (DEX via web3.py)
 web3>=6.0.0
 eth-account>=0.11.0
+
+# Phase 8 — API, WebSocket & Conversation Layer
+anthropic>=0.97.0
