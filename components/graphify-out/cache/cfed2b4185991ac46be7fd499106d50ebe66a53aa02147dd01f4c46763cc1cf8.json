@@ -1,0 +1,1 @@
+{"nodes": [{"id": "components_ui_gauge_tsx", "label": "gauge.tsx", "file_type": "code", "source_file": "components/ui/gauge.tsx", "source_location": "L1"}], "edges": [{"source": "components_ui_gauge_tsx", "target": "react", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "components/ui/gauge.tsx", "source_location": "L3", "weight": 1.0}], "raw_calls": []}
