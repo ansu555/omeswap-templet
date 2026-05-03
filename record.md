@@ -6,3 +6,8 @@ changes: built terminal V1: layout shell, chart store, lightweight-charts wrappe
 user: ansu555
 branch: terminal
 changes: reverted latest 3 commits from branch history
+
+[2026-05-03 00:00]
+user: ansu555
+branch: agents
+changes: implemented Phase 0 foundation — ats/ package (config, models, data, api), docker-compose, Dockerfile, requirements.txt, .env.example; smoke-tested with Python 3.12 venv via uv
