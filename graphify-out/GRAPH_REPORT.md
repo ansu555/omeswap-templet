@@ -2420,11 +2420,11 @@ _Questions this graph is uniquely positioned to answer:_
 - **What is the exact relationship between `Avalanche DEX (README)` and `Omeswap on 0G Chain (dev guide)`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
 - **Why does `GET()` connect `Community 0` to `Community 1`, `Community 26`, `Community 21`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
-- **Why does `runBot()` connect `Community 1` to `Community 0`, `Community 4`?**
-  _High betweenness centrality (0.020) - this node is a cross-community bridge._
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **Why does `POST()` connect `Community 0` to `Community 8`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
+  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Why does `runBot()` connect `Community 1` to `Community 0`, `Community 4`?**
+  _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **Are the 24 inferred relationships involving `POST()` (e.g. with `isValidWalletAddress()` and `isValidRiskResponses()`) actually correct?**
   _`POST()` has 24 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 17 inferred relationships involving `GET()` (e.g. with `AgentBuilderContent()` and `isValidWalletAddress()`) actually correct?**
