@@ -5,7 +5,7 @@
 
 ## Goal
 
-Turn a fully risk-approved order spec into an actual on-chain swap via a DEX. Agent 6 uses a dedicated **agent smart account** (private key stored in `AGENT_WALLET_PRIVATE_KEY`, manageable from the portfolio page) to sign and submit swap transactions to the Trader Joe V2 router on Avalanche C-Chain.
+Turn a fully risk-approved order spec into an actual on-chain swap via a DEX. Agent 6 uses a dedicated **agent smart account** (private key stored in `AGENT_WALLET_PRIVATE_KEY`, manageable from the portfolio page) to sign and submit swap transactions to the 0G DEX on 0G Chain (Newton Testnet, chainId 16600).
 
 It selects an execution strategy (single swap / TWAP) based on order size, submits the transaction, waits for the receipt, updates portfolio state in Redis, appends fill data to the Decision Receipt in Postgres, and broadcasts the fill event over WebSocket.
 
@@ -41,12 +41,12 @@ ats/agents/
 # Set this in the portfolio page UI; stored as AGENT_WALLET_PRIVATE_KEY
 AGENT_WALLET_PRIVATE_KEY=0x...
 
-# Avalanche C-Chain RPC
-RPC_URL=https://api.avax.network/ext/bc/C/rpc
+# 0G Chain — Newton Testnet (chainId 16600)
+RPC_URL=https://evmrpc-testnet.0g.ai
 
-# DEX router — Trader Joe V2 is default; falls back to V1 if quote fails
-DEX_ROUTER_ADDRESS=0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30
-DEX_ROUTER_V1_ADDRESS=0x60aE616a2155Ee3d9A68541Ba4544862310933d4
+# DEX router — 0G DEX (replace with live addresses once deployed to mainnet)
+DEX_ROUTER_ADDRESS=0x0000000000000000000000000000000000000010
+DEX_ROUTER_V1_ADDRESS=0x0000000000000000000000000000000000000011
 
 # Slippage tolerance (basis points; 50 = 0.5%)
 DEX_SLIPPAGE_BPS=50
@@ -119,13 +119,14 @@ ERC20_ABI = [
     },
 ]
 
-# Token addresses on Avalanche C-Chain
+# Token addresses on 0G Chain (Newton Testnet)
+# TODO: replace with live addresses once 0G DEX deploys to mainnet
 TOKEN_ADDRESSES = {
-    "WAVAX":   "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
-    "USDC":    "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6C",
-    "USDC.e":  "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
-    "WBTC.e":  "0x50b7545627a5162F82A992c33b87aDc75187B218",
-    "WETH.e":  "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB",
+    "W0G":  "0x0000000000000000000000000000000000000001",
+    "USDC": "0x0000000000000000000000000000000000000002",
+    "USDT": "0x0000000000000000000000000000000000000003",
+    "WETH": "0x0000000000000000000000000000000000000004",
+    "WBTC": "0x0000000000000000000000000000000000000005",
 }
 
 _w3: AsyncWeb3 | None = None
@@ -352,7 +353,8 @@ async def stop_loss_monitor_loop():
 
             if breached and current_price > 0:
                 # Exit: swap position token back to USDC
-                token_in  = ticker.replace("USDT", ".e").replace("BTC", "WBTC.e").replace("ETH", "WETH.e")
+                _exit_map = {"BTCUSDT": "WBTC", "ETHUSDT": "WETH", "WBTCUSDT": "WBTC"}
+                token_in  = _exit_map.get(ticker, "W0G")
                 token_out = "USDC"
                 amount_wei = pos.get("amount_in_wei", 0)
                 try:
@@ -381,11 +383,11 @@ from ats.agents.execution.portfolio_updater import update_portfolio_after_fill, 
 from ats.agents.execution.stop_loss_monitor import stop_loss_monitor_loop
 from ats.data.postgres_client import get_session
 
-# Maps ATS tickers to DEX token symbols
+# Maps ATS tickers to 0G Chain DEX token symbols
 TICKER_TO_TOKEN = {
-    "BTCUSDT":  "WBTC.e",
-    "ETHUSDT":  "WETH.e",
-    "WBTCUSDT": "WBTC.e",
+    "BTCUSDT":  "WBTC",
+    "ETHUSDT":  "WETH",
+    "WBTCUSDT": "WBTC",
 }
 QUOTE_TOKEN = "USDC"    # always buy/sell against USDC
 
@@ -399,7 +401,7 @@ class Agent6Execution:
             return state
 
         direction   = state.signal_vote.direction   # "LONG" or "SHORT"
-        token_asset = TICKER_TO_TOKEN.get(state.trigger_ticker, "WAVAX")
+        token_asset = TICKER_TO_TOKEN.get(state.trigger_ticker, "W0G")
         size_usd    = risk.size_usd
 
         if direction == "LONG":
@@ -410,7 +412,7 @@ class Agent6Execution:
         else:
             # Sell asset for USDC — need amount in asset wei from open position
             token_in, token_out = token_asset, QUOTE_TOKEN
-            amount_in_wei = int(risk.shares * 1e8)  # WBTC.e has 8 decimals
+            amount_in_wei = int(risk.shares * 1e8)  # WBTC has 8 decimals
 
         result = await execute_order(token_in, token_out, amount_in_wei, size_usd)
 
@@ -458,12 +460,12 @@ Add to `ats/config.py`:
 # Agent smart account — dedicated on-chain execution wallet
 agent_wallet_private_key: str = ""
 
-# Avalanche C-Chain
-rpc_url: str = "https://api.avax.network/ext/bc/C/rpc"
+# 0G Chain — Newton Testnet (chainId 16600)
+rpc_url: str = "https://evmrpc-testnet.0g.ai"
 
-# DEX routers (Trader Joe V2 primary, V1 fallback)
-dex_router_address: str = "0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30"
-dex_router_v1_address: str = "0x60aE616a2155Ee3d9A68541Ba4544862310933d4"
+# DEX routers — 0G native DEX (replace with live addresses once deployed)
+dex_router_address: str = "0x0000000000000000000000000000000000000010"
+dex_router_v1_address: str = "0x0000000000000000000000000000000000000011"
 
 # Slippage in basis points (50 = 0.5%)
 dex_slippage_bps: int = 50
@@ -480,8 +482,8 @@ eth-account>=0.11.0
 
 ## Validation checklist
 
-- [ ] `get_quote("USDC", "WBTC.e", 1_000_000)` returns a non-zero int (USDC has 6 decimals)
-- [ ] `approve_token("USDC", 1_000_000)` succeeds on testnet and returns a valid tx hash
+- [ ] `get_quote("USDC", "WBTC", 1_000_000)` returns a non-zero int (USDC has 6 decimals)
+- [ ] `approve_token("USDC", 1_000_000)` succeeds on 0G testnet and returns a valid tx hash
 - [ ] Single swap under $10K submits one tx and waits for receipt
 - [ ] TWAP over $10K submits 5 txs spaced 2 minutes apart
 - [ ] `portfolio:state` in Redis shows updated `cash_usd` and `open_positions` after fill
