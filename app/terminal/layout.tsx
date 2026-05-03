@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./terminal.css";
 
 export const metadata: Metadata = {
-  title: "Perps · Phantom-style Trading",
+  title: "Trading Terminal · Omeswap",
   description:
-    "Trade perpetual futures with up to 50x leverage on a sleek Phantom-inspired interface.",
+    "Trade coins and perps with onchain market data, liquidity depth, and agentic execution context.",
 };
 
 export default function TerminalLayout({
