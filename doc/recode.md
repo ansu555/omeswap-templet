@@ -4,6 +4,12 @@ All upgrades and changes made to this repository are logged here.
 
 ---
 
+### [2026-05-03 15:22:40 Z] agent=codex user=ansu555 branch=agents
+- upgrade_paths: tests/test_integration.py
+- upgrade_summary: Added a full ATS integration test suite that validates cross-module communication across orchestrator graph routing, Redis handoffs, Agent6 execution flow, stop-loss monitoring, Postgres receipt updates, RAG/chat grounding, API-to-pipeline wiring, and startup lifecycle behavior. The suite uses real internal module wiring while mocking only external systems.
+
+---
+
 ### [2026-05-03 13:55:00 Z] agent=claude user=anik branch=market_place
 - upgrade_paths: components/marketplace/buy-panel.tsx, components/creator/publish-wizard.tsx, app/(app)/marketplace/page.tsx, app/(app)/marketplace/strategies/[id]/page.tsx, app/(app)/creator/page.tsx, components/agent-builder/canvas/PublishModal.tsx
 - upgrade_summary: Implemented full marketplace frontend. Created BuyPanel (wagmi useSendTransaction/useWriteContract EVM payment → treasury → POST purchase API → Activate Now unlock). Created 4-step PublishWizard (details/risk/privacy+pricing/preview with AES-256-GCM encryption info, free/paid toggle, payout wallet). Rewrote marketplace home with featured horizontal scroll row, platform picks, trending, new arrivals, free/paid sections, and filter sidebar (pricing, risk, win rate floor, asset, regime). Rewrote strategy detail with prominent stat tiles, alpha score, human_summary display, BuyPanel in sidebar, perf tabs, version history, no code exposure. Created creator dashboard with metrics bar (activations, purchases, earnings), strategy/indicator tables with actions, draft continuation links. Wired PublishModal to render PublishWizard for strategy mode, keeping flat indicator form.
