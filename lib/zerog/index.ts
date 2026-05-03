@@ -19,6 +19,7 @@
 export * from './storage'
 export * from './compute'
 export * from './da'
+export * from './private-strategy'
 
 export {
   ZEROG_STORAGE_RPC,
