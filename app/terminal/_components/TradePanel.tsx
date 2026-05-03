@@ -1,8 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronDown, Infinity as InfinityIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ChevronDown, Infinity as InfinityIcon, Bot, Loader2, CheckCircle, XCircle, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import type { DexMarket } from "@/lib/dex/types";
 import { UniswapSwapCard } from "@/components/trade/UniswapSwapCard";
 import type { SwapToken } from "@/hooks/use-uniswap-swap";
@@ -15,6 +18,286 @@ function getEthDecimals(address: string): number {
   return match?.decimals ?? 18;
 }
 
+// ── Agent Activity Strip ──────────────────────────────────────────────────────
+
+interface ReceiptSummary {
+  id: string;
+  run_id: string;
+  ticker: string;
+  created_at: string;
+  consensus: { decision: string; confidence: number };
+  risk_sizing: { size_usd: number };
+  tx_hash: string | null;
+}
+
+function AgentActivityStrip({ address }: { address?: string }) {
+  const [receipts, setReceipts] = useState<ReceiptSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!address) return;
+    setLoading(true);
+    fetch("/api/research/receipts?limit=5", {
+      headers: { "x-wallet-address": address },
+    })
+      .then((r) => r.json())
+      .then((d: { receipts: ReceiptSummary[] }) => setReceipts(d.receipts ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [address]);
+
+  if (!address) return null;
+
+  const decisionClass = (d: string) =>
+    d === "BUY" ? "text-bull" : d === "SELL" ? "text-bear" : "text-muted-foreground";
+
+  return (
+    <div className="border-b border-border">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-panel/50 transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <Bot size={10} className="text-primary" />
+          <span className="text-[10px] font-medium text-muted-foreground">Agent Activity</span>
+          {receipts.length > 0 && (
+            <span className="text-[9px] font-mono px-1 py-0.5 rounded-full bg-primary/15 text-primary">
+              {receipts.length}
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          size={10}
+          className={`text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+      {expanded && (
+        <div className="px-3 pb-2 space-y-1">
+          {loading && (
+            <div className="flex items-center gap-1.5 py-1">
+              <Loader2 size={10} className="text-primary animate-spin" />
+              <span className="text-[10px] text-muted-foreground">Loading trades…</span>
+            </div>
+          )}
+          {!loading && receipts.length === 0 && (
+            <p className="text-[10px] text-muted-foreground py-1">
+              No agent trades yet.{" "}
+              <Link href="/research" className="text-primary hover:underline">
+                Run research →
+              </Link>
+            </p>
+          )}
+          {receipts.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center justify-between gap-2 py-1.5 border-b border-border/40 last:border-0"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`text-[10px] font-bold shrink-0 ${decisionClass(r.consensus.decision)}`}>
+                  {r.consensus.decision}
+                </span>
+                <span className="text-[10px] font-mono text-foreground shrink-0">{r.ticker}</span>
+                <span className="text-[9px] text-muted-foreground tabular truncate">
+                  ${r.risk_sizing.size_usd.toFixed(0)}
+                </span>
+              </div>
+              <div className="shrink-0">
+                {r.tx_hash ? (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-bull/10 text-bull border border-bull/20">
+                    Executed
+                  </span>
+                ) : (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                    Research
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          <Link href="/research" className="block text-center text-[9px] text-primary hover:underline pt-0.5">
+            Open Research →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Agent Approval Banner (deep-link from /research assisted mode) ─────────────
+
+type ApprovalExecState = "idle" | "executing" | "done" | "error";
+
+function AgentApprovalBanner({
+  runId,
+  decision,
+  sizeUsd,
+  ticker,
+  query,
+  address,
+  onDismiss,
+}: {
+  runId: string;
+  decision: "BUY" | "SELL";
+  sizeUsd: number;
+  ticker: string;
+  query: string;
+  address: string;
+  onDismiss: () => void;
+}) {
+  const [execState, setExecState] = useState<ApprovalExecState>("idle");
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const isBuy = decision === "BUY";
+
+  const handleApprove = useCallback(async () => {
+    setExecState("executing");
+    setError(null);
+    try {
+      const res = await fetch("/api/research/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": address,
+        },
+        body: JSON.stringify({
+          query,
+          ticker,
+          mode: "assisted",
+          executionApproved: true,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (raw === "[DONE]") { streamDone = true; break; }
+          try {
+            const evt = JSON.parse(raw) as { type: string; payload?: Record<string, unknown>; message?: string };
+            if (evt.type === "execution.done" && typeof evt.payload?.tx_hash === "string") {
+              setTxHash(evt.payload.tx_hash as string);
+            }
+            if (evt.type === "run.done") { setExecState("done"); streamDone = true; break; }
+            if (evt.type === "run.error") throw new Error(evt.message ?? "Run error");
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
+      setExecState("done");
+    } catch (e) {
+      setError((e as Error).message ?? "Execution failed");
+      setExecState("error");
+    }
+  }, [address, query, ticker]);
+
+  return (
+    <div
+      className="border-b"
+      style={{
+        background: isBuy
+          ? "linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.03))"
+          : "linear-gradient(135deg, rgba(239,68,68,0.07), rgba(239,68,68,0.03))",
+        borderColor: isBuy ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)",
+      }}
+    >
+      <div
+        className="flex items-center gap-1.5 px-3 py-1.5"
+        style={{
+          background: isBuy ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.06)",
+          borderBottom: isBuy ? "1px solid rgba(16,185,129,0.12)" : "1px solid rgba(239,68,68,0.12)",
+        }}
+      >
+        <Zap size={9} className={isBuy ? "text-emerald-400" : "text-red-400"} />
+        <span
+          className={`text-[9px] font-semibold uppercase tracking-widest ${isBuy ? "text-emerald-400" : "text-red-400"}`}
+        >
+          Assisted Mode · Approval Required
+        </span>
+        <span className="ml-auto text-[9px] font-mono text-muted-foreground">{runId.slice(0, 8)}</span>
+      </div>
+
+      <div className="px-3 py-2.5 space-y-2.5">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-foreground/80">
+            ATS recommends:{" "}
+            <span className={`font-bold ${isBuy ? "text-bull" : "text-bear"}`}>
+              {decision} {ticker}
+            </span>
+          </span>
+          <span className="text-xs font-mono text-muted-foreground">${sizeUsd.toFixed(2)}</span>
+        </div>
+
+        {execState === "done" && (
+          <div className="flex items-center gap-1.5 text-bull text-[10px]">
+            <CheckCircle size={10} />
+            <span>Executed{txHash ? ` · ${txHash.slice(0, 10)}…` : ""}</span>
+          </div>
+        )}
+        {execState === "error" && (
+          <p className="text-[10px] text-bear flex items-center gap-1.5">
+            <XCircle size={10} />
+            {error}
+          </p>
+        )}
+
+        {execState !== "done" && (
+          <div className="flex gap-2">
+            <button
+              onClick={handleApprove}
+              disabled={execState === "executing"}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-40
+                ${isBuy
+                  ? "bg-bull/15 border border-bull/30 text-bull hover:bg-bull/25"
+                  : "bg-bear/15 border border-bear/30 text-bear hover:bg-bear/25"
+                }`}
+            >
+              {execState === "executing" ? (
+                <Loader2 size={10} className="animate-spin" />
+              ) : (
+                <CheckCircle size={10} />
+              )}
+              {execState === "executing" ? "Executing…" : "Approve & Execute"}
+            </button>
+            <button
+              onClick={onDismiss}
+              disabled={execState === "executing"}
+              className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-[10px] text-muted-foreground border border-border hover:border-border/70 hover:text-foreground transition-all disabled:opacity-40"
+            >
+              <XCircle size={10} />
+              Dismiss
+            </button>
+          </div>
+        )}
+        {execState === "done" && (
+          <button
+            onClick={onDismiss}
+            className="w-full text-[9px] text-muted-foreground hover:text-foreground transition-colors text-center"
+          >
+            Dismiss
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type Side = "buy" | "sell";
 type OrderType = "Swap" | "Limit Intent";
 
@@ -25,6 +308,23 @@ type MarketResponse = {
 const FALLBACK_PRICE = 0.531342;
 
 export function TradePanel({ marketId }: { marketId: string }) {
+  const { address } = useAccount();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Deep-link approval params (set when navigating from /research assisted-mode approval)
+  const fromResearch = searchParams.get("from") === "research";
+  const approvalRunId = searchParams.get("runId") ?? "";
+  const approvalDecision = searchParams.get("decision") as "BUY" | "SELL" | null;
+  const approvalSizeUsd = parseFloat(searchParams.get("sizeUsd") ?? "0");
+  const approvalTicker = searchParams.get("ticker") ?? "";
+  const approvalQuery = searchParams.get("query") ?? "";
+  const hasApprovalBanner = fromResearch && !!approvalRunId && !!approvalDecision && !!address;
+
+  const dismissApproval = useCallback(() => {
+    router.replace("/terminal");
+  }, [router]);
+
   const [side, setSide] = useState<Side>("buy");
   const [orderType, setOrderType] = useState<OrderType>("Swap");
   const [amount, setAmount] = useState("250");
@@ -117,6 +417,22 @@ export function TradePanel({ marketId }: { marketId: string }) {
 
   return (
     <aside className="w-[340px] shrink-0 bg-background flex flex-col">
+      {/* Deep-link approval banner — shown when arriving from /research assisted mode */}
+      {hasApprovalBanner && (
+        <AgentApprovalBanner
+          runId={approvalRunId}
+          decision={approvalDecision!}
+          sizeUsd={approvalSizeUsd}
+          ticker={approvalTicker}
+          query={approvalQuery}
+          address={address!}
+          onDismiss={dismissApproval}
+        />
+      )}
+
+      {/* Agent activity strip — collapsible history of last 5 agent-initiated trades */}
+      <AgentActivityStrip address={address} />
+
       <div className="grid grid-cols-2 border-b border-border">
         <button
           onClick={() => setSide("buy")}

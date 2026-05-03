@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { DEFAULT_DEX_MARKET_ID } from "@/lib/dex/markets";
 import { Header } from "./_components/Header";
@@ -20,7 +20,9 @@ export default function TerminalPage() {
         <TokenList activeMarketId={marketId} onMarketSelect={setMarketId} />
         <Chart marketId={marketId} />
         <OrderBook marketId={marketId} />
-        <TradePanel marketId={marketId} />
+        <Suspense fallback={<div className="w-[340px] shrink-0 bg-background border-l border-border" />}>
+          <TradePanel marketId={marketId} />
+        </Suspense>
       </main>
       <Footer />
     </div>
