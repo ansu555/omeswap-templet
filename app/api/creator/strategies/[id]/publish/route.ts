@@ -6,6 +6,10 @@ import {
   validateMarketplaceStrategyPayload,
   type StrategyDraftPayload,
 } from '@/lib/marketplace/validate-strategy'
+import {
+  sealStrategyPayload,
+  generateHumanSummary,
+} from '@/lib/zerog/private-strategy'
 import type { Node } from '@xyflow/react'
 
 function collectIndicatorRefsFromGraph(
@@ -126,7 +130,7 @@ export async function POST(
       }
     }
 
-    const payload = {
+    const compiledPayload = {
       nodes: merged.nodes ?? [],
       edges: merged.edges ?? [],
       configs: merged.configs ?? {},
@@ -137,13 +141,24 @@ export async function POST(
       indicatorRefs: uniq,
     }
 
+    // Encrypt compiled graph and upload to 0G Storage.
+    // The Supabase payload column stores only a marker object; the real logic
+    // lives in the ciphertext blob referenced by zerog_root_hash.
+    const { rootHash, markerPayload } = await sealStrategyPayload(compiledPayload)
+
+    // Generate a human-readable summary if the caller didn't supply one.
+    const humanSummary =
+      body.human_summary ??
+      (await generateHumanSummary(compiledPayload).catch(() => null))
+
     const { data: ver, error: vErr } = await supabase
       .from('strategy_versions')
       .insert({
         strategy_id: id,
         version_number: nextNum,
-        payload,
-        human_summary: body.human_summary ?? null,
+        payload: markerPayload,
+        zerog_root_hash: rootHash,
+        human_summary: humanSummary,
         validation_status: 'passed',
       })
       .select('id')
@@ -170,11 +185,11 @@ export async function POST(
       .update({
         current_version_id: versionId,
         status: 'published',
-        asset_pairs: payload.assetPairs,
+        asset_pairs: compiledPayload.assetPairs,
       })
       .eq('id', id)
 
-    return NextResponse.json({ versionId, versionNumber: nextNum })
+    return NextResponse.json({ versionId, versionNumber: nextNum, rootHash })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
