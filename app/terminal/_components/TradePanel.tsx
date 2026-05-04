@@ -12,69 +12,16 @@ import type { DexMarket } from "@/lib/dex/types";
 import { UniswapSwapCard } from "@/components/trade/UniswapSwapCard";
 import type { SwapToken } from "@/hooks/use-uniswap-swap";
 import { ethereumConfig } from "@/lib/chain-registry/chains/ethereum";
-
-// Verified on-chain addresses for 0G mainnet (chain ID 16661)
-const ZEROG_CHAIN_ID = 16661;
-const W0G_ADDRESS = "0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" as const;
-const USDCE_ADDRESS = "0x1f3aa82227281ca364bfb3d253b0f1af1da6473e" as const;
-const JAINE_V3_ROUTER_ADDRESS = "0x8b598a7c136215a95ba0282b4d832b9f9801f2e2" as const;
-const JAINE_POOL_FEE = 10_000;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
-
-const ERC20_ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const JAINE_V3_ROUTER_ABI = [
-  {
-    inputs: [
-      {
-        components: [
-          { name: "tokenIn", type: "address" },
-          { name: "tokenOut", type: "address" },
-          { name: "fee", type: "uint24" },
-          { name: "recipient", type: "address" },
-          { name: "deadline", type: "uint256" },
-          { name: "amountIn", type: "uint256" },
-          { name: "amountOutMinimum", type: "uint256" },
-          { name: "sqrtPriceLimitX96", type: "uint160" },
-        ],
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "exactInputSingle",
-    outputs: [{ name: "amountOut", type: "uint256" }],
-    stateMutability: "payable",
-    type: "function",
-  },
-] as const;
+import {
+  JAINE_CHAIN_ID as ZEROG_CHAIN_ID,
+  JAINE_ERC20_ABI,
+  JAINE_POOL_FEE,
+  JAINE_USDCE_ADDRESS as USDCE_ADDRESS,
+  JAINE_V3_ROUTER_ABI,
+  JAINE_V3_ROUTER_ADDRESS,
+  JAINE_W0G_ADDRESS as W0G_ADDRESS,
+  ZERO_ADDRESS,
+} from "@/lib/dex/jaine";
 
 function getEthDecimals(address: string): number {
   const match = Object.values(ethereumConfig.tokens).find(
@@ -375,7 +322,7 @@ const FALLBACK_PRICE = 0.531342;
 function useZerogBalances(address: `0x${string}` | undefined, enabled: boolean) {
   const { data: w0gRaw, refetch: refetchW0g } = useReadContract({
     address: W0G_ADDRESS,
-    abi: ERC20_ABI,
+    abi: JAINE_ERC20_ABI,
     functionName: "balanceOf",
     args: [address ?? ZERO_ADDRESS],
     chainId: ZEROG_CHAIN_ID,
@@ -384,7 +331,7 @@ function useZerogBalances(address: `0x${string}` | undefined, enabled: boolean) 
 
   const { data: usdceRaw, refetch: refetchUsdce } = useReadContract({
     address: USDCE_ADDRESS,
-    abi: ERC20_ABI,
+    abi: JAINE_ERC20_ABI,
     functionName: "balanceOf",
     args: [address ?? ZERO_ADDRESS],
     chainId: ZEROG_CHAIN_ID,
@@ -501,7 +448,7 @@ export function TradePanel({ marketId }: { marketId: string }) {
 
   const { data: jainneAllowance, refetch: refetchJainneAllowance } = useReadContract({
     address: jainneTokenIn.address,
-    abi: ERC20_ABI,
+    abi: JAINE_ERC20_ABI,
     functionName: "allowance",
     args: [address ?? ZERO_ADDRESS, JAINE_V3_ROUTER_ADDRESS],
     chainId: ZEROG_CHAIN_ID,
@@ -638,7 +585,7 @@ export function TradePanel({ marketId }: { marketId: string }) {
       setPendingSwapAfterApprove(true);
       writeJainneApproval({
         address: jainneTokenIn.address,
-        abi: ERC20_ABI,
+        abi: JAINE_ERC20_ABI,
         functionName: "approve",
         args: [JAINE_V3_ROUTER_ADDRESS, jainneAmountIn],
         chainId: ZEROG_CHAIN_ID,

@@ -46,6 +46,7 @@ const VALID_TRANSPORTS: AxlTransport[] = ['local', 'axl', 'auto']
  * when the caller doesn't provide one explicitly.
  */
 const KNOWN_TICKERS = [
+  'W0G', '0G',
   'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'DOGE', 'DOT', 'MATIC',
   'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'NEAR', 'APT', 'ARB', 'OP', 'INJ',
   'SUI', 'SEI', 'TIA', 'RNDR', 'PEPE', 'WIF', 'BONK', 'JUP', 'PYTH',

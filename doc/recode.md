@@ -165,3 +165,11 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-04 19:45:00 +0530] agent=claude user=ansu555 branch=main
 - upgrade_paths: app/terminal/_components/TradePanel.tsx, app/terminal/_components/Chart.tsx, doc/recode.md
 - upgrade_summary: Replaced the external Jaine Hub terminal CTA with an in-site 0G swap path. Verified the Jaine W0G/USDC.e pool is V3/CLMM-style (slot0/fee present, getReserves absent) and inferred the standard V3 SwapRouter address from live successful swap calldata. TradePanel now switches to 0G, approves the selected input token to the inferred Jaine V3 router, and submits exactInputSingle from inside Omeswap; balances/allowance refresh after confirmation. Removed external deposit/trade links and cleaned an unused Chart helper so `bunx tsc --noEmit` passes.
+
+### [2026-05-04 19:58:00 +0530] agent=claude user=ansu555 branch=main
+- upgrade_paths: lib/dex/jaine.ts, lib/ats/agents/execution-agent.ts, app/api/research/run/route.ts, app/terminal/_components/TradePanel.tsx, doc/recode.md
+- upgrade_summary: Unified manual and agent Jaine execution behind a shared adapter. Added lib/dex/jaine.ts with verified W0G/USDC.e token addresses, inferred V3 router address, exactInputSingle ABI, trade-plan sizing, allowance/approval, and wallet-client execution. ATS Execution Agent now routes 0G W0G/USDC.e autonomous/assisted-approved trades through the shared Jaine adapter using the encrypted agent wallet, while unsupported 0G tickers are skipped with an explicit message. Research ticker extraction now recognizes W0G/0G; terminal manual swaps import the shared adapter constants. Validation passes with `bunx tsc --noEmit`.
+
+### [2026-05-04 20:17:00 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: app/api/agent-builder/agent/route.ts, components/agent-builder/canvas/AgentSidebar.tsx, doc/recode.md
+- upgrade_summary: Wired the Agent Builder assistant to the Portfolio Agent Settings API key. The sidebar now forwards the connected wallet address, and the builder API route loads the user's encrypted OpenRouter key/model from user_settings before falling back to env keys.

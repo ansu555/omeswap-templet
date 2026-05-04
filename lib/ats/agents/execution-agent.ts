@@ -31,6 +31,13 @@ import type { RunEvent, RiskSizing } from '@/lib/ats/types'
 import { getOrCreateAgentWallet } from '@/lib/agent-wallet/manager'
 import { getChainConfig } from '@/lib/chain-registry'
 import { SWAP_ROUTER_ABI, ERC20_ABI } from '@/lib/uniswap/constants'
+import { getDexMarket } from '@/lib/dex/geckoterminal'
+import {
+  executeJaineAgentSwap,
+  isJaineTicker,
+  JAINE_CHAIN_ID,
+  JAINE_MARKET_ID,
+} from '@/lib/dex/jaine'
 
 // ── Result type ───────────────────────────────────────────────────────────────
 
@@ -112,6 +119,9 @@ const TICKER_ALIAS: Record<string, string> = {
   ETH: 'WETH',
   ETHER: 'WETH',
   BITCOIN: 'WBTC',
+  '0G': 'W0G',
+  OG: 'W0G',
+  ZEROG: 'W0G',
 }
 
 function resolveTokenSymbol(ticker: string): string {
@@ -337,6 +347,49 @@ async function executeV2Swap(
   }
 }
 
+// ── Jaine V3 execution path (0G W0G/USDC.e) ───────────────────────────────────
+
+async function executeJaineSwap(
+  decision: 'BUY' | 'SELL',
+  ticker: string,
+  sizing: RiskSizing,
+  agentWallet: { address: string; account: import('viem/accounts').PrivateKeyAccount },
+  chainConfig: ReturnType<typeof getChainConfig>,
+): Promise<ExecutionAgentResult> {
+  if (!isJaineTicker(ticker)) {
+    const tokenSymbol = resolveTokenSymbol(ticker)
+    return {
+      tx_hash: null,
+      status: 'skipped',
+      amount_in_usd: sizing.size_usd,
+      token_in: decision === 'BUY' ? 'USDC.e' : tokenSymbol,
+      token_out: decision === 'BUY' ? tokenSymbol : 'USDC.e',
+      chain_id: chainConfig.chain.id,
+      error: 'Jaine agent execution currently supports the W0G/USDC.e market only.',
+    }
+  }
+
+  const market = await getDexMarket(JAINE_MARKET_ID)
+  const rpcUrl = chainConfig.chain.rpcUrls.default.http[0]
+  const result = await executeJaineAgentSwap({
+    account: agentWallet.account,
+    chain: chainConfig.chain,
+    rpcUrl,
+    decision,
+    sizeUsd: sizing.size_usd,
+    priceUsd: market.priceUsd,
+  })
+
+  return {
+    tx_hash: result.txHash,
+    status: 'submitted',
+    amount_in_usd: result.amountInUsd,
+    token_in: result.tokenIn,
+    token_out: result.tokenOut,
+    chain_id: chainConfig.chain.id,
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -380,12 +433,16 @@ export async function runExecutionAgent(
     const agentWallet = await getOrCreateAgentWallet(userWallet, chainId)
     const chainConfig = getChainConfig(chainId)
 
-    // Dispatch to V2 or V3 based on the chain's primary router type
-    const primaryRouter = chainConfig.dexRouters[0]
-    if (primaryRouter?.type === 'uniswapV2') {
-      result = await executeV2Swap(decision, ticker, sizing, agentWallet, chainConfig)
+    if (chainConfig.chain.id === JAINE_CHAIN_ID) {
+      result = await executeJaineSwap(decision, ticker, sizing, agentWallet, chainConfig)
     } else {
-      result = await executeV3Swap(decision, ticker, sizing, agentWallet, chainConfig)
+      // Dispatch to V2 or V3 based on the chain's primary router type
+      const primaryRouter = chainConfig.dexRouters[0]
+      if (primaryRouter?.type === 'uniswapV2') {
+        result = await executeV2Swap(decision, ticker, sizing, agentWallet, chainConfig)
+      } else {
+        result = await executeV3Swap(decision, ticker, sizing, agentWallet, chainConfig)
+      }
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
