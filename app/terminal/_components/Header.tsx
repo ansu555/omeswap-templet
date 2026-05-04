@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import { Search, ChevronDown } from "lucide-react";
+import { WalletConnect } from "@/components/features/wallet";
 
 export function Header() {
   return (
@@ -33,9 +36,7 @@ export function Header() {
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">/</span>
         </div>
       </div>
-      <button className="flex items-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary px-4 h-9 rounded-full text-sm font-medium border border-primary/30 shadow-[0_0_24px_-6px_hsl(var(--primary)/0.5)]">
-        <span className="h-2 w-2 rounded-full bg-primary" /> Connect Wallet
-      </button>
+      <WalletConnect />
     </header>
   );
 }

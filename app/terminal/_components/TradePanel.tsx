@@ -5,11 +5,76 @@ import Link from "next/link";
 import { ChevronDown, Infinity as InfinityIcon, Bot, Loader2, CheckCircle, XCircle, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, useReadContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { formatUnits, parseUnits, type Address } from "viem";
 import type { DexMarket } from "@/lib/dex/types";
 import { UniswapSwapCard } from "@/components/trade/UniswapSwapCard";
 import type { SwapToken } from "@/hooks/use-uniswap-swap";
 import { ethereumConfig } from "@/lib/chain-registry/chains/ethereum";
+
+// Verified on-chain addresses for 0G mainnet (chain ID 16661)
+const ZEROG_CHAIN_ID = 16661;
+const W0G_ADDRESS = "0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" as const;
+const USDCE_ADDRESS = "0x1f3aa82227281ca364bfb3d253b0f1af1da6473e" as const;
+const JAINE_V3_ROUTER_ADDRESS = "0x8b598a7c136215a95ba0282b4d832b9f9801f2e2" as const;
+const JAINE_POOL_FEE = 10_000;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+const ERC20_ABI = [
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+const JAINE_V3_ROUTER_ABI = [
+  {
+    inputs: [
+      {
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "recipient", type: "address" },
+          { name: "deadline", type: "uint256" },
+          { name: "amountIn", type: "uint256" },
+          { name: "amountOutMinimum", type: "uint256" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+        name: "params",
+        type: "tuple",
+      },
+    ],
+    name: "exactInputSingle",
+    outputs: [{ name: "amountOut", type: "uint256" }],
+    stateMutability: "payable",
+    type: "function",
+  },
+] as const;
 
 function getEthDecimals(address: string): number {
   const match = Object.values(ethereumConfig.tokens).find(
@@ -307,8 +372,41 @@ type MarketResponse = {
 
 const FALLBACK_PRICE = 0.531342;
 
+function useZerogBalances(address: `0x${string}` | undefined, enabled: boolean) {
+  const { data: w0gRaw, refetch: refetchW0g } = useReadContract({
+    address: W0G_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [address ?? ZERO_ADDRESS],
+    chainId: ZEROG_CHAIN_ID,
+    query: { enabled: !!address && enabled, refetchInterval: 30000 },
+  });
+
+  const { data: usdceRaw, refetch: refetchUsdce } = useReadContract({
+    address: USDCE_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [address ?? ZERO_ADDRESS],
+    chainId: ZEROG_CHAIN_ID,
+    query: { enabled: !!address && enabled, refetchInterval: 30000 },
+  });
+
+  const w0g = w0gRaw !== undefined ? parseFloat(formatUnits(w0gRaw as bigint, 18)) : null;
+  const usdce = usdceRaw !== undefined ? parseFloat(formatUnits(usdceRaw as bigint, 6)) : null;
+
+  const refetch = useCallback(() => {
+    refetchW0g();
+    refetchUsdce();
+  }, [refetchUsdce, refetchW0g]);
+
+  return { w0g, usdce, refetch };
+}
+
 export function TradePanel({ marketId }: { marketId: string }) {
   const { address } = useAccount();
+  const connectedChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const { openConnectModal } = useConnectModal();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -333,6 +431,8 @@ export function TradePanel({ marketId }: { marketId: string }) {
   const [slippageBps, setSlippageBps] = useState(50);
   const [autoClose, setAutoClose] = useState(false);
   const [market, setMarket] = useState<DexMarket | null>(null);
+  const [pendingSwapAfterApprove, setPendingSwapAfterApprove] = useState(false);
+  const [swapError, setSwapError] = useState<string | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -369,6 +469,64 @@ export function TradePanel({ marketId }: { marketId: string }) {
   const liquidity = market?.liquidityUsd ?? 0;
   const isPerp = market?.kind === "perp";
   const isEthSpot = market?.network === "eth" && market?.kind === "spot";
+  const is0gSpot = market?.network === "0g" && market?.kind === "spot";
+
+  const { w0g: w0gBalance, usdce: usdceBalance, refetch: refetchZerogBalances } = useZerogBalances(address, is0gSpot);
+
+  const availableToTradeValue = is0gSpot
+    ? side === "buy"
+      ? usdceBalance
+      : w0gBalance
+    : null;
+
+  const totalBalanceUsd = is0gSpot && w0gBalance !== null && usdceBalance !== null
+    ? usdceBalance + w0gBalance * markPrice
+    : null;
+
+  const jainneTokenIn = side === "buy"
+    ? { address: USDCE_ADDRESS as Address, symbol: "USDC.e", decimals: 6 }
+    : { address: W0G_ADDRESS as Address, symbol: "W0G", decimals: 18 };
+  const jainneTokenOut = side === "buy"
+    ? { address: W0G_ADDRESS as Address, symbol: "W0G", decimals: 18 }
+    : { address: USDCE_ADDRESS as Address, symbol: "USDC.e", decimals: 6 };
+
+  const jainneAmountIn = useMemo(() => {
+    if (!is0gSpot || !amount || Number(amount) <= 0) return null;
+    try {
+      return parseUnits(amount, jainneTokenIn.decimals);
+    } catch {
+      return null;
+    }
+  }, [amount, is0gSpot, jainneTokenIn.decimals]);
+
+  const { data: jainneAllowance, refetch: refetchJainneAllowance } = useReadContract({
+    address: jainneTokenIn.address,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: [address ?? ZERO_ADDRESS, JAINE_V3_ROUTER_ADDRESS],
+    chainId: ZEROG_CHAIN_ID,
+    query: { enabled: !!address && is0gSpot, refetchInterval: 30000 },
+  });
+
+  const {
+    writeContract: writeJainneApproval,
+    data: jainneApprovalHash,
+    error: jainneApprovalError,
+    isPending: isJainneApprovalPending,
+  } = useWriteContract();
+
+  const {
+    writeContract: writeJainneSwap,
+    data: jainneSwapHash,
+    error: jainneSwapError,
+    isPending: isJainneSwapPending,
+  } = useWriteContract();
+
+  const { isLoading: isJainneApprovalConfirming, isSuccess: isJainneApprovalSuccess } =
+    useWaitForTransactionReceipt({ hash: jainneApprovalHash });
+
+  const { isLoading: isJainneSwapConfirming, isSuccess: isJainneSwapSuccess } =
+    useWaitForTransactionReceipt({ hash: jainneSwapHash });
 
   const swapTokenBase = useMemo<SwapToken | null>(() => {
     if (!market || !isEthSpot) return null;
@@ -415,6 +573,120 @@ export function TradePanel({ marketId }: { marketId: string }) {
     };
   }, [amount, isPerp, limitPrice, liquidity, markPrice, orderType, side]);
 
+  const jainneAmountOutMin = useMemo(() => {
+    if (!is0gSpot || preview.receive <= 0) return 0n;
+    const protectedOutput = preview.receive * Math.max(0, 10_000 - slippageBps) / 10_000;
+    try {
+      return parseUnits(protectedOutput.toFixed(jainneTokenOut.decimals), jainneTokenOut.decimals);
+    } catch {
+      return 0n;
+    }
+  }, [is0gSpot, jainneTokenOut.decimals, preview.receive, slippageBps]);
+
+  const isWrongJainneChain = is0gSpot && !!address && connectedChainId !== ZEROG_CHAIN_ID;
+  const needsJainneApproval =
+    is0gSpot &&
+    !!jainneAmountIn &&
+    (jainneAllowance === undefined || jainneAmountIn > (jainneAllowance as bigint));
+
+  const executeJainneSwap = useCallback(() => {
+    if (!address || !jainneAmountIn || jainneAmountOutMin <= 0n) return;
+
+    setSwapError(null);
+    writeJainneSwap({
+      address: JAINE_V3_ROUTER_ADDRESS,
+      abi: JAINE_V3_ROUTER_ABI,
+      functionName: "exactInputSingle",
+      args: [
+        {
+          tokenIn: jainneTokenIn.address,
+          tokenOut: jainneTokenOut.address,
+          fee: JAINE_POOL_FEE,
+          recipient: address,
+          deadline: BigInt(Math.floor(Date.now() / 1000) + 20 * 60),
+          amountIn: jainneAmountIn,
+          amountOutMinimum: jainneAmountOutMin,
+          sqrtPriceLimitX96: 0n,
+        },
+      ],
+      chainId: ZEROG_CHAIN_ID,
+    });
+  }, [
+    address,
+    jainneAmountIn,
+    jainneAmountOutMin,
+    jainneTokenIn.address,
+    jainneTokenOut.address,
+    writeJainneSwap,
+  ]);
+
+  const handleJainneSwap = () => {
+    if (!address) return;
+
+    if (isWrongJainneChain) {
+      switchChain({ chainId: ZEROG_CHAIN_ID });
+      return;
+    }
+
+    if (!jainneAmountIn || jainneAmountIn <= 0n) {
+      setSwapError("Enter an amount greater than 0.");
+      return;
+    }
+
+    if (needsJainneApproval) {
+      setSwapError(null);
+      setPendingSwapAfterApprove(true);
+      writeJainneApproval({
+        address: jainneTokenIn.address,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [JAINE_V3_ROUTER_ADDRESS, jainneAmountIn],
+        chainId: ZEROG_CHAIN_ID,
+      });
+      return;
+    }
+
+    executeJainneSwap();
+  };
+
+  useEffect(() => {
+    if (!pendingSwapAfterApprove || !isJainneApprovalSuccess) return;
+    setPendingSwapAfterApprove(false);
+    refetchJainneAllowance().finally(() => executeJainneSwap());
+  }, [executeJainneSwap, isJainneApprovalSuccess, pendingSwapAfterApprove, refetchJainneAllowance]);
+
+  useEffect(() => {
+    const error = jainneApprovalError ?? jainneSwapError;
+    if (error) {
+      setPendingSwapAfterApprove(false);
+      setSwapError(error.message || "Swap failed");
+    }
+  }, [jainneApprovalError, jainneSwapError]);
+
+  useEffect(() => {
+    if (!isJainneSwapSuccess) return;
+    setSwapError(null);
+    refetchZerogBalances();
+    refetchJainneAllowance();
+  }, [isJainneSwapSuccess, refetchJainneAllowance, refetchZerogBalances]);
+
+  const isJainneSwapLoading =
+    isJainneApprovalPending ||
+    isJainneApprovalConfirming ||
+    isJainneSwapPending ||
+    isJainneSwapConfirming ||
+    pendingSwapAfterApprove;
+
+  const jainneButtonLabel = isWrongJainneChain
+    ? "Switch to 0G"
+    : isJainneSwapLoading
+      ? pendingSwapAfterApprove || isJainneApprovalPending || isJainneApprovalConfirming
+        ? `Approving ${jainneTokenIn.symbol}...`
+        : "Swapping..."
+      : needsJainneApproval
+        ? `Approve ${jainneTokenIn.symbol}`
+        : `${side === "buy" ? "Buy" : "Sell"} ${baseSymbol}`;
+
   return (
     <aside className="w-[340px] shrink-0 bg-background flex flex-col">
       {/* Deep-link approval banner — shown when arriving from /research assisted mode */}
@@ -457,7 +729,16 @@ export function TradePanel({ marketId }: { marketId: string }) {
       </div>
 
       <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-        <Row label="Available to Trade" value="$0.00" />
+        <Row
+          label="Available to Trade"
+          value={
+            availableToTradeValue !== null
+              ? side === "buy"
+                ? formatUsd(availableToTradeValue)
+                : `${formatTokenAmount(availableToTradeValue)} ${baseSymbol}`
+              : address ? "..." : "$0.00"
+          }
+        />
         <Row label={`${baseSymbol} Mark`} value={formatUsd(markPrice)} valueClass={(market?.change24h ?? 0) >= 0 ? "text-bull" : "text-bear"} />
 
         <div>
@@ -552,22 +833,76 @@ export function TradePanel({ marketId }: { marketId: string }) {
         </div>
       ) : (
         <div className="p-4 space-y-3 border-t border-border">
-          <button className="w-full h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)]">
-            <Image src="/logo.png" alt="" width={18} height={18} className="rounded-full" /> Connect Wallet
-          </button>
+          {address ? (
+            is0gSpot ? (
+              <button
+                onClick={handleJainneSwap}
+                disabled={isJainneSwapLoading || (!isWrongJainneChain && (!jainneAmountIn || jainneAmountIn <= 0n))}
+                className={`w-full h-11 rounded-lg flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)] ${
+                  side === "buy" ? "bg-bull text-white" : "bg-bear text-white"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isJainneSwapLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {jainneButtonLabel}
+              </button>
+            ) : (
+              <button
+                className={`w-full h-11 rounded-lg flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)] ${
+                  side === "buy" ? "bg-bull text-white" : "bg-bear text-white"
+                }`}
+              >
+                {isPerp ? (side === "buy" ? "Long" : "Short") : (side === "buy" ? "Buy" : "Sell")} {baseSymbol}
+              </button>
+            )
+          ) : (
+            <button
+              onClick={openConnectModal}
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold hover:opacity-90 shadow-[0_0_30px_-6px_hsl(var(--primary)/0.7)]"
+            >
+              <Image src="/logo.png" alt="" width={18} height={18} className="rounded-full" /> Connect Wallet
+            </button>
+          )}
 
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Total Balance</span>
-            <span className="tabular">$0.00</span>
+            <span className="tabular">
+              {totalBalanceUsd !== null ? formatUsd(totalBalanceUsd) : address ? "..." : "$0.00"}
+            </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Available Balance</span>
-            <span className="tabular">$0.00</span>
+            <span className="tabular">
+              {availableToTradeValue !== null
+                ? side === "buy"
+                  ? formatUsd(availableToTradeValue)
+                  : `${formatTokenAmount(availableToTradeValue)} ${baseSymbol}`
+                : address ? "..." : "$0.00"}
+            </span>
           </div>
 
-          <button className="w-full h-10 rounded-lg bg-primary/30 text-foreground font-medium hover:bg-primary/40">
-            Deposit
-          </button>
+          {is0gSpot && swapError ? (
+            <p className="text-xs text-bear rounded-lg border border-bear/20 bg-bear/10 px-3 py-2">
+              {swapError}
+            </p>
+          ) : null}
+          {is0gSpot && isJainneSwapSuccess && jainneSwapHash ? (
+            <p className="text-xs text-bull rounded-lg border border-bull/20 bg-bull/10 px-3 py-2">
+              Swap confirmed: {jainneSwapHash.slice(0, 10)}…
+            </p>
+          ) : null}
+
+          {is0gSpot ? (
+            <button
+              className="w-full h-10 rounded-lg bg-primary/20 text-muted-foreground font-medium"
+              disabled
+            >
+              Uses connected wallet balance
+            </button>
+          ) : (
+            <button className="w-full h-10 rounded-lg bg-primary/30 text-foreground font-medium hover:bg-primary/40">
+              Deposit
+            </button>
+          )}
           <button className="w-full h-10 rounded-lg bg-panel text-muted-foreground font-medium" disabled>
             Withdraw
           </button>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 import {
   Camera,
   CalendarDays,
@@ -24,7 +26,7 @@ import {
   type LineSeriesPartialOptions,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { DexCandle, DexMarket } from "@/lib/dex/types";
+import type { DexCandle, DexMarket, DexTrade } from "@/lib/dex/types";
 
 type BtcCandle = CandlestickData<UTCTimestamp> & {
   volume: number;
@@ -126,9 +128,12 @@ export function Chart({ marketId }: { marketId: string }) {
   });
   const [latestCandle, setLatestCandle] = useState<BtcCandle | null>(null);
   const [status, setStatus] = useState<"loading" | "live" | "offline">("loading");
+  const explorerBase = "https://chainscan.0g.ai";
   const [utcTime, setUtcTime] = useState("");
   const [bottomTab, setBottomTab] = useState("Positions (0)");
   const [indicatorMenuOpen, setIndicatorMenuOpen] = useState(false);
+  const [trades, setTrades] = useState<DexTrade[]>([]);
+  const [tradesLoading, setTradesLoading] = useState(false);
 
   const syncIndicatorSeries = (
     candles: BtcCandle[],
@@ -399,6 +404,32 @@ export function Chart({ marketId }: { marketId: string }) {
     };
   }, [enabledIndicators, interval, marketId]);
 
+  useEffect(() => {
+    let disposed = false;
+
+    async function loadTrades() {
+      setTradesLoading(true);
+      try {
+        const response = await fetch(`/api/dex/trades?market=${encodeURIComponent(marketId)}`);
+        if (!response.ok) throw new Error("Trades request failed");
+        const data = (await response.json()) as { trades: DexTrade[] };
+        if (!disposed) setTrades(data.trades ?? []);
+      } catch {
+        if (!disposed) setTrades([]);
+      } finally {
+        if (!disposed) setTradesLoading(false);
+      }
+    }
+
+    loadTrades();
+    const timer = window.setInterval(loadTrades, 30000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [marketId]);
+
   const ohlcText = useMemo(() => {
     if (!latestCandle) return "Waiting for market feed";
 
@@ -559,7 +590,7 @@ export function Chart({ marketId }: { marketId: string }) {
             </button>
           ))}
         </div>
-        <BottomPanel activeTab={bottomTab} stats={stats} />
+        <BottomPanel activeTab={bottomTab} stats={stats} trades={trades} tradesLoading={tradesLoading} explorerBase={explorerBase} />
       </div>
     </div>
   );
@@ -574,7 +605,22 @@ function Stat({ label, value, valueClass = "" }: { label: string; value: string;
   );
 }
 
-function BottomPanel({ activeTab, stats }: { activeTab: string; stats: BtcStats }) {
+function BottomPanel({
+  activeTab,
+  stats,
+  trades,
+  tradesLoading,
+  explorerBase,
+}: {
+  activeTab: string;
+  stats: BtcStats;
+  trades: DexTrade[];
+  tradesLoading: boolean;
+  explorerBase: string;
+}) {
+  const { openConnectModal } = useConnectModal();
+  const { isConnected } = useAccount();
+
   if (activeTab === "Pool") {
     return (
       <div className="h-48 grid grid-cols-3 gap-px bg-border/50 text-sm">
@@ -587,11 +633,79 @@ function BottomPanel({ activeTab, stats }: { activeTab: string; stats: BtcStats 
 
   if (activeTab === "Swaps") {
     return (
-      <div className="h-48 grid grid-cols-4 text-sm">
-        <BottomHeader label="Pair" value={stats.pairLabel} />
-        <BottomHeader label="Mark" value={stats.mark ? formatUsd(stats.mark) : "..."} />
-        <BottomHeader label="24h Change" value={formatSignedPercent(stats.changePercent)} tone={stats.changePercent >= 0 ? "text-bull" : "text-bear"} />
-        <BottomHeader label="24h Volume" value={stats.volume ? formatUsd(stats.volume) : "..."} />
+      <div className="h-48 overflow-y-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-background border-b border-border">
+            <tr className="text-muted-foreground">
+              <th className="text-left px-3 py-1.5 font-medium">Side</th>
+              <th className="text-right px-3 py-1.5 font-medium">Price</th>
+              <th className="text-right px-3 py-1.5 font-medium">Amount</th>
+              <th className="text-right px-3 py-1.5 font-medium">Value</th>
+              <th className="text-right px-3 py-1.5 font-medium">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tradesLoading && trades.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-6 text-muted-foreground">
+                  Loading trades…
+                </td>
+              </tr>
+            ) : trades.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-6 text-muted-foreground">
+                  No recent trades
+                </td>
+              </tr>
+            ) : (
+              trades.map((trade) => (
+                <tr
+                  key={trade.id}
+                  className="border-b border-border/30 hover:bg-panel/50 transition-colors"
+                >
+                  <td className={`px-3 py-1.5 font-semibold ${trade.side === "buy" ? "text-bull" : "text-bear"}`}>
+                    {trade.side === "buy" ? "BUY" : "SELL"}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-foreground">
+                    {formatCompactNumber(trade.priceUsd)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-muted-foreground">
+                    {formatVolume(trade.size)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-muted-foreground">
+                    {formatUsd(trade.volumeUsd)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-muted-foreground">
+                    {trade.txHash ? (
+                      <a
+                        href={`${explorerBase}/tx/${trade.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary transition-colors"
+                        title={new Date(trade.timestamp).toLocaleString()}
+                      >
+                        {formatRelativeTime(trade.timestamp)}
+                      </a>
+                    ) : (
+                      <span title={new Date(trade.timestamp).toLocaleString()}>
+                        {formatRelativeTime(trade.timestamp)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <div className="h-48 flex flex-col items-center justify-center gap-2">
+        <div className="text-sm text-muted-foreground">No open positions</div>
+        <div className="text-xs text-muted-foreground/60">Positions will appear here once you trade</div>
       </div>
     );
   }
@@ -599,7 +713,10 @@ function BottomPanel({ activeTab, stats }: { activeTab: string; stats: BtcStats 
   return (
     <div className="h-48 flex flex-col items-center justify-center gap-3">
       <div className="text-sm text-muted-foreground">No wallet detected</div>
-      <button className="px-6 h-9 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium hover:bg-primary/25 transition-colors">
+      <button
+        onClick={openConnectModal}
+        className="px-6 h-9 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium hover:bg-primary/25 transition-colors"
+      >
         Connect Wallet
       </button>
     </div>
@@ -611,15 +728,6 @@ function FundingCell({ label, value, tone = "text-foreground" }: { label: string
     <div className="bg-background flex flex-col justify-center px-4">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className={`mt-2 text-lg tabular ${tone}`}>{value}</span>
-    </div>
-  );
-}
-
-function BottomHeader({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="flex flex-col justify-center px-4 border-r border-border">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`mt-2 tabular ${tone}`}>{value}</span>
     </div>
   );
 }
@@ -907,6 +1015,14 @@ function formatUsd(value: number) {
     currency: "USD",
     maximumFractionDigits: fractionDigitsForPrice(value),
   }).format(value);
+}
+
+function formatRelativeTime(timestamp: string): string {
+  const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
 }
 
 function formatSignedPercent(value: number) {

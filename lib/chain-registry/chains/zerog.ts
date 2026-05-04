@@ -113,48 +113,35 @@ export const ZEROG_COMPUTE_ENDPOINT =
 export const zeroGConfig: ChainConfig = {
   chain: zeroGChain,
 
-  // TODO: Replace with official wrapped token address for the selected network.
-  nativeWrapped: "0x0000000000000000000000000000000000000001" as Address,
+  // Verified on-chain: W0G on 0G mainnet (from pool 0x961da9b2fd03e04b088a90843a93e66f13112d0a)
+  nativeWrapped: "0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" as Address,
 
-  // Routing hubs: W0G first (deepest liquidity), USDC second (stablecoin hub).
-  // TODO: Replace with verified token addresses from official 0G/Jaine docs.
+  // Routing hubs: W0G first (deepest liquidity), USDC.e second (bridged stablecoin).
   hubTokens: [
-    "0x0000000000000000000000000000000000000001" as Address, // W0G
-    "0x0000000000000000000000000000000000000002" as Address, // USDC
+    "0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" as Address, // W0G
+    "0x1f3aa82227281ca364bfb3d253b0f1af1da6473e" as Address, // USDC.e (Bridged USDC)
   ],
 
   explorerUrl: ACTIVE.explorerUrl,
   explorerTxPath: "/tx/",
   explorerAddressPath: "/address/",
 
-  // TODO: Replace placeholder router addresses with verified Jaine contracts.
-  dexRouters: [
-    {
-      id: "zerog_dex",
-      name: "Jaine Hub",
-      type: "uniswapV2",
-      routerAddress: "0x0000000000000000000000000000000000000010" as Address,
-    },
-    {
-      id: "zerog_dex_v2",
-      name: "Jaine Hub V2",
-      type: "uniswapV2",
-      routerAddress: "0x0000000000000000000000000000000000000011" as Address,
-    },
-  ],
+  // Jaine uses a proprietary non-standard router (confirmed via on-chain tx tracing).
+  // Direct integration requires their SDK/ABI — swaps are routed via jaine.app.
+  dexRouters: [],
 
-  // TODO: Replace token placeholders with verified 0G token addresses.
+  // Verified token addresses on 0G mainnet (chain ID 16661).
   tokens: {
     W0G: {
-      address: "0x0000000000000000000000000000000000000001" as Address,
+      address: "0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c" as Address,
       name: "Wrapped 0G",
       symbol: "W0G",
       decimals: 18,
     },
     USDC: {
-      address: "0x0000000000000000000000000000000000000002" as Address,
-      name: "USD Coin",
-      symbol: "USDC",
+      address: "0x1f3aa82227281ca364bfb3d253b0f1af1da6473e" as Address,
+      name: "Bridged USDC",
+      symbol: "USDC.e",
       decimals: 6,
       coingeckoId: "usd-coin",
     },

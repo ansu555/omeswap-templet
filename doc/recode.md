@@ -149,3 +149,19 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-04 18:18:54 +0530] agent=codex user=ansu555 branch=main
 - upgrade_paths: components/layout/header.tsx, components/terminal/tiles/OrderPanelTile.tsx, app/(app)/pool/[id]/page.tsx, doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
 - upgrade_summary: Completed trade-page disable rollout by removing the Trade tab from the primary nav and replacing internal /trade entry points with external 0G Hub actions. Pool and terminal quick actions now direct users to Hub while preserving in-page swap card behavior where applicable.
+
+### [2026-05-04 19:00:00 +0530] agent=claude user=ansu555 branch=main
+- upgrade_paths: app/terminal/_components/Header.tsx, app/terminal/_components/TradePanel.tsx, app/terminal/_components/Chart.tsx
+- upgrade_summary: Fixed non-functional Connect Wallet buttons on the terminal page. Header now uses the WalletConnect component; TradePanel and Chart buttons are wired to useConnectModal from rainbowkit.
+
+### [2026-05-04 19:04:00 +0530] agent=claude user=ansu555 branch=main
+- upgrade_paths: app/terminal/_components/TradePanel.tsx, app/terminal/_components/Chart.tsx
+- upgrade_summary: Fixed terminal page showing Connect Wallet even after wallet is connected. TradePanel now shows Buy/Sell action button when connected; Chart Positions tab shows "No open positions" instead of the connect prompt.
+
+### [2026-05-04 19:30:00 +0530] agent=claude user=ansu555 branch=main
+- upgrade_paths: lib/chain-registry/chains/zerog.ts, app/terminal/_components/TradePanel.tsx, app/terminal/_components/Chart.tsx
+- upgrade_summary: Made terminal page data real. (1) Updated zerog.ts with verified on-chain token addresses for W0G (0x1cd0690...) and USDC.e (0x1f3aa82...) from on-chain pool query. (2) TradePanel now reads live ERC20 balances for W0G and USDC.e using wagmi useReadContract on 0G mainnet (chain 16661) — "Available to Trade", "Total Balance", "Available Balance" all show real wallet amounts. (3) Buy/Sell button on 0G spot market opens Jaine Hub (confirmed via on-chain tx tracing that Jaine uses a proprietary non-standard router). (4) Swaps tab now shows a live sortable trade table fetched from GeckoTerminal with side, price, amount, USD value, and timestamped tx links to chainscan.0g.ai; refreshes every 30s.
+
+### [2026-05-04 19:45:00 +0530] agent=claude user=ansu555 branch=main
+- upgrade_paths: app/terminal/_components/TradePanel.tsx, app/terminal/_components/Chart.tsx, doc/recode.md
+- upgrade_summary: Replaced the external Jaine Hub terminal CTA with an in-site 0G swap path. Verified the Jaine W0G/USDC.e pool is V3/CLMM-style (slot0/fee present, getReserves absent) and inferred the standard V3 SwapRouter address from live successful swap calldata. TradePanel now switches to 0G, approves the selected input token to the inferred Jaine V3 router, and submits exactInputSingle from inside Omeswap; balances/allowance refresh after confirmation. Removed external deposit/trade links and cleaned an unused Chart helper so `bunx tsc --noEmit` passes.
