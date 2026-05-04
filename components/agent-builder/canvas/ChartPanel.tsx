@@ -8,8 +8,6 @@ import { useStore } from '@/store/agent-builder'
 import { fetchBinanceHistory } from '@/lib/agent-builder/backtest/fetchHistory'
 
 const SYMBOLS = [
-  { label: 'AVAX/USD', binance: 'AVAXUSDT' },
-  { label: 'AVAX/BTC', binance: 'AVAXBTC' },
   { label: 'BTC/USD',  binance: 'BTCUSDT' },
   { label: 'ETH/USD',  binance: 'ETHUSDT' },
   { label: 'JOE/USD',  binance: 'JOEUSDT' },

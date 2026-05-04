@@ -34,7 +34,7 @@ ${config ? `  Config:\n${config}` : '  Config: none'}
 `.trim()
   }).join('\n\n')
 
-  return `You are an expert AVAX trading bot builder embedded in a visual node-based canvas tool.
+  return `You are an expert Omeswap and 0G trading bot builder embedded in a visual node-based canvas tool.
 Your job is to help users build automated trading strategies by placing and connecting nodes.
 
 ## YOUR WORKFLOW (follow this order strictly)

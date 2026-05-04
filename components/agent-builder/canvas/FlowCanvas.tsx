@@ -65,8 +65,8 @@ export default function FlowCanvas() {
     return last.timestamp.toLocaleTimeString();
   }, [logs]);
 
-  // AVAX exposure: sum amountIn from all swap nodes
-  const avaxExposure = useMemo(() => {
+  // 0G exposure: sum amountIn from all swap nodes
+  const chainExposure = useMemo(() => {
     let total = 0;
     for (const node of nodes) {
       const nodeType = (node.data as Record<string, unknown>)
@@ -246,15 +246,15 @@ export default function FlowCanvas() {
           </>
         )}
 
-        {avaxExposure > 0 && (
+        {chainExposure > 0 && (
           <>
             <span className="text-white/10">|</span>
             <span
               className={
-                avaxExposure > 5 ? "text-amber-400/70" : "text-white/25"
+                chainExposure > 5 ? "text-amber-400/70" : "text-white/25"
               }
             >
-              Exposure: {avaxExposure.toFixed(4)} AVAX
+              Exposure: {chainExposure.toFixed(4)} W0G
             </span>
           </>
         )}

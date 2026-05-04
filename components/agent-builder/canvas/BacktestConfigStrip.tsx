@@ -3,7 +3,7 @@
 import { useStore } from "@/store/agent-builder";
 import clsx from "clsx";
 
-const SYMBOLS = ["AVAXUSDT", "BTCUSDT", "ETHUSDT", "JOEUSDT"];
+const SYMBOLS = ["BTCUSDT", "ETHUSDT", "JOEUSDT"];
 const INTERVALS = ["1h", "4h", "1d"];
 
 export default function BacktestConfigStrip() {

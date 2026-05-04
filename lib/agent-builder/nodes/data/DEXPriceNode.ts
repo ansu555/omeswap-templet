@@ -39,7 +39,7 @@ export class DEXPriceNode extends BaseNode {
       label: 'Token In',
       type: 'select',
       options: _tokenSymbols,
-      default: 'WAVAX',
+      default: 'W0G',
     },
     {
       key: 'tokenOut',
@@ -61,7 +61,7 @@ export class DEXPriceNode extends BaseNode {
     context: ExecutionContext
   ): Promise<Record<string, unknown>> {
     const dex = (this.config.dex as string) || _dexNames[0]
-    const tokenIn = (this.config.tokenIn as string) || 'WAVAX'
+    const tokenIn = (this.config.tokenIn as string) || 'W0G'
     const tokenOut = (this.config.tokenOut as string) || 'USDC.e'
     const amountIn = (this.config.amountIn as number) || 1
 

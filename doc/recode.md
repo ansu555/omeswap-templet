@@ -173,3 +173,7 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-04 20:17:00 +0530] agent=codex user=ansu555 branch=main
 - upgrade_paths: app/api/agent-builder/agent/route.ts, components/agent-builder/canvas/AgentSidebar.tsx, doc/recode.md
 - upgrade_summary: Wired the Agent Builder assistant to the Portfolio Agent Settings API key. The sidebar now forwards the connected wallet address, and the builder API route loads the user's encrypted OpenRouter key/model from user_settings before falling back to env keys.
+
+### [2026-05-04 20:24:00 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: components/agent-builder/canvas/AgentSidebar.tsx, lib/agent-builder/agent/systemPrompt.ts, app/api/agent-builder/chat/route.ts, components/agent-builder/canvas/FlowCanvas.tsx, lib/agent-builder/templates.ts, components/agent-builder/canvas/ChartPanel.tsx, components/agent-builder/canvas/BacktestConfigStrip.tsx, store/agent-builder.ts, lib/agent-builder/nodes/action/AddChartMarkerNode.ts, lib/agent-builder/nodes/data/DEXPriceNode.ts, lib/agent-builder/nodes/action/LimitOrderNode.ts, doc/recode.md
+- upgrade_summary: Removed stale AVAX/Avalanche user-facing copy from the Agent Builder sidebar, prompts, templates, exposure display, chart/backtest defaults, and node defaults so the builder presents as Omeswap/0G with W0G-oriented defaults.

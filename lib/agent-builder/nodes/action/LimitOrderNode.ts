@@ -38,7 +38,7 @@ export class LimitOrderNode extends BaseNode {
       label: 'Token In',
       type: 'select',
       options: _tokenSymbols,
-      default: 'WAVAX',
+      default: 'W0G',
     },
     {
       key: 'tokenOut',
