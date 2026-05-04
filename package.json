@@ -13,7 +13,9 @@
     "hardhat:liquidity": "cd ../Avalanche_contract && npx hardhat run scripts/addLiquidity.js --network avalanche",
     "hardhat:swap": "cd ../Avalanche_contract && npx hardhat run scripts/swap.js --network avalanche",
     "hardhat:multihop": "cd ../Avalanche_contract && npx hardhat run scripts/multiHopSwap.js --network avalanche",
-    "hardhat:quickstart": "cd ../Avalanche_contract && npx hardhat run scripts/quickStart.js --network avalanche"
+    "hardhat:quickstart": "cd ../Avalanche_contract && npx hardhat run scripts/quickStart.js --network avalanche",
+    "axl:agent": "bun run scripts/axl-agent-service.ts",
+    "axl:demo": "bun run scripts/axl-demo.ts"
   },
   "dependencies": {
     "@coingecko/coingecko-typescript": "^2.5.0",
