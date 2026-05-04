@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# avax-agent
 
-## Getting Started
+Last updated: 2026-05-04
 
-First, run the development server:
+`avax-agent/` is a standalone Next.js visual trading-bot builder that predates the root Omeswap builder integration. It has its own `package.json`, `package-lock.json`, `next.config.ts`, `tsconfig.json`, `app/`, `components/`, `lib/`, `store/`, and `types/`.
+
+Do not treat this directory as a normal package inside the root Next.js app. It is a separate app and should be run from this directory.
+
+## Run
 
 ```bash
+cd avax-agent
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` unless Next chooses another port.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What It Contains
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/` landing/home page for the standalone builder.
+- `/canvas` visual workflow canvas.
+- `/api/agent` OpenRouter-backed assistant route.
+- Builder canvas components under `components/canvas/`.
+- Node components under `components/nodes/`.
+- Executable node and engine code under `lib/`.
+- Local store under `store/useStore.ts`.
 
-## Learn More
+## Relationship To The Root App
 
-To learn more about Next.js, take a look at the following resources:
+The root app now has its own integrated agent builder at `/agent-builder` using `components/agent-builder/`, `lib/agent-builder/`, `store/agent-builder.ts`, and root API routes.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Use `avax-agent/` for reference or isolated experimentation. Shared production changes should usually target the root builder unless the task explicitly asks for the standalone app.

@@ -1,5 +1,7 @@
 # Graph Report - /home/anik2003/Documents/omeswap/avax-agent  (2026-04-18)
 
+> Archived generated Graphify report. It may describe an older code snapshot; use [../avax-agent/README.md](../avax-agent/README.md) for the current standalone app notes and [../README.md](../README.md) for the root project.
+
 ## Corpus Check
 - Corpus is ~19,828 words - fits in a single context window. You may not need a graph.
 

@@ -1,156 +1,186 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file gives coding agents the current operating map for this repository.
+
+Last updated: 2026-05-04
 
 ## Commands
 
 ```bash
-# Development
-bun run dev          # or: npm run dev
-bun run build
-bun run lint
+# Root Next.js app
+npm install
+npm run dev
+npm run build
+npm run start
+npm run lint
 
-# Smart contract operations (requires ../Avalanche_contract)
-npm run hardhat:compile
-npm run hardhat:test
-npm run hardhat:mint       # mint test tokens
-npm run hardhat:liquidity  # add liquidity
-npm run hardhat:swap       # execute swap
-npm run hardhat:multihop   # multi-hop swap
-npm run hardhat:quickstart # full setup
+# Python ATS API
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+uvicorn ats.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Dockerized ATS API + Redis
+docker compose up redis api
+
+# ATS tests
+python -m pytest tests/test_phase1.py -v
+python -m pytest tests/test_phase4.py tests/test_phase5.py tests/test_phase6.py -v
+python -m pytest tests/test_phase7.py tests/test_phase8.py -v
 ```
+
+`package.json` still contains Hardhat scripts that `cd ../Avalanche_contract`. Treat those as legacy unless the sibling repo exists. The root app now gets active chain/router data from `lib/chain-registry/`.
 
 ## Environment
 
+Minimum Next.js local variables:
+
 ```bash
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=  # required — from cloud.walletconnect.com
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+OPEN_ROUTER_API_KEY=
 ```
 
-## Architecture
+Useful optional variables:
 
-**Omeswap** is a DEX and autonomous agent platform on **0G Chain** (EVM-compatible, chainId 16600) using Next.js 15 App Router. The repo has no tests; validate with `bun run build` and visual inspection.
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_TREASURY_WALLET=
+ADMIN_WALLETS=0x...
+OPENAI_API_KEY=
+COINGECKO_API_KEY=
+COINMARKETCAP_API_KEY=
+STRATEGY_ENCRYPTION_KEY= # 64 hex chars, openssl rand -hex 32
+ZEROG_COMPUTE_API_KEY=
+```
 
-0G provides four core primitives used throughout this project:
-- **0G Chain** — EVM execution layer (Newton Testnet, chainId 16600)
-- **0G Storage** — decentralized KV + Log blobs for persistent agent memory (`lib/zerog/storage.ts`)
-- **0G Compute** — decentralized AI inference for agent reasoning (`lib/zerog/compute.ts`), models: `qwen3-8b`, `qwen3.6-plus` (sealed ZK), `GLM-5-FP8`
-- **0G DA** — data availability layer for high-throughput agent output (`lib/zerog/da.ts`)
+ATS variables are defined in `ats/config.py`. Important ones include `REDIS_URL`, `DATABASE_URL`, `AGENT_WALLET_PRIVATE_KEY`, `RPC_URL`, `DEX_ROUTER_ADDRESS`, `ZEROG_STORAGE_RPC`, `ZEROG_COMPUTE_ENDPOINT`, and `ZEROG_DA_RPC`.
 
-### Route Groups
+## Current Architecture
+
+**Omeswap** is a Next.js 15 + Python platform for DEX trading, strategy building, strategy marketplace distribution, and a six-agent trading backend.
+
+The current chain story is:
+
+- **0G Newton Testnet** is the default chain target for Omeswap agent execution, marketplace purchases, 0G Storage, 0G Compute, and 0G DA helpers.
+- **Ethereum mainnet** is registered for the swap UI and Uniswap-style routes.
+- **Avalanche** code remains in config files and the standalone `avax-agent/` app, but it is compatibility/reference material rather than the default app chain.
+
+## Route Groups
 
 | Group | Path | Purpose |
-|-------|------|---------|
-| `(app)` | `/trade`, `/terminal`, `/portfolio`, `/explore`, `/transactions`, `/marketplace`, `/creator`, `/library`, `/admin` | Main authenticated DEX |
-| `(builder)` | `/agent-builder` | Visual bot workflow editor |
-| `(landing)` | `/` | Marketing landing page |
-| `(userform)` | `/onboarding` | Wallet-based onboarding |
+|---|---|---|
+| `(landing)` | `/` | Landing page. |
+| `(app)` | `/trade`, `/portfolio`, `/explore`, `/transactions`, `/marketplace`, `/creator`, `/library`, `/admin`, token/pool details | Main wallet-gated app shell. |
+| `(builder)` | `/agent-builder` | Visual bot workflow editor. |
+| `(userform)` | `/onboarding`, `/userform` | Wallet onboarding and risk profile flow. |
+| standalone | `/terminal` | Dense trading terminal outside the `(app)` shell. |
 
-The `(app)` layout wraps everything in `AvalancheWalletProvider` (connects to 0G Chain) → `OnboardingGuard` → `ChatProvider`. `OnboardingGuard` redirects new wallets to onboarding; `DisconnectOverlay` handles wallet-switch detection.
+The `(app)` layout wraps children in `AvalancheWalletProvider` (compatibility export of `WalletProvider`), `OnboardingGuard`, `DisconnectOverlay`, `ChatProvider`, and the global chat panel. It exports `dynamic = "force-dynamic"` for wallet-dependent pages.
 
-### API Routes (`app/api/`)
+## API Routes
 
-| Route | Purpose |
-|-------|---------|
-| `/api/onboarding` | Wallet onboarding, creator registration |
-| `/api/activations/[id]` | Bot activation lifecycle — pause, evaluate, execute, receipts |
-| `/api/creator/strategies/[id]` | Strategy CRUD + validate / backtest / publish pipeline |
-| `/api/creator/indicators/[id]` | User indicator CRUD |
-| `/api/creator/dashboard` | Creator stats |
-| `/api/marketplace` | Public strategy/indicator listings |
-| `/api/token/[id]/analysis` | Token analysis (CoinGecko + Supabase) |
-| `/api/crypto` | Generic price/market data proxy |
-| `/api/receipts/[id]` | Trade receipt lookup |
-| `/api/admin` | Admin-only wallet management |
+Key Next.js API groups:
 
-Auth is header-based: `requireWallet()` (`lib/marketplace/wallet-header.ts`) extracts the wallet address; `isAdminWallet()` gates admin routes.
+- `/api/onboarding` stores and reads wallet risk profiles.
+- `/api/crypto` aggregates CoinMarketCap, CoinGecko, GeckoTerminal, and Kryll data for explorer screens.
+- `/api/dex/*` exposes markets, chart candles, depth, and trade streams for the terminal.
+- `/api/token/[id]` and `/api/token/[id]/analysis` power token detail analysis.
+- `/api/agent-builder/*` powers builder chat and streaming agent block generation.
+- `/api/marketplace/*` lists strategies/indicators, featured sections, bookmarks, reports, purchases, access checks, and version detail.
+- `/api/creator/*` owns strategy/indicator CRUD, validation, backtests, publishing, and dashboard stats.
+- `/api/activations/*` manages user strategy activations, pause/evaluate/execute, and activation receipts.
+- `/api/receipts/*` writes and reads trade/decision receipts.
+- `/api/admin/*` gates moderation actions through `ADMIN_WALLETS`.
 
-### Chain Registry (`lib/chain-registry/`)
+Wallet auth is header-based: `requireWallet()` reads `x-wallet-address` in `lib/marketplace/wallet-header.ts`.
 
-Single source of truth for all chain config (RPC URLs, contract addresses, tokens, DEX routers). All other files import from here — never hardcode addresses elsewhere.
+## Chain Registry
 
-To add a new chain: create `lib/chain-registry/chains/<chain>.ts` exporting a `ChainConfig`, import it in `lib/chain-registry/index.ts`, and add to `REGISTRY`. The wallet provider, swap hooks, and agent nodes pick it up automatically.
+`lib/chain-registry/` is the source of truth for chain config.
 
-Currently registered: **0G Newton Testnet** (chainId 16600). Config file: `lib/chain-registry/chains/zerog.ts`.
+- `chains/zerog.ts`: default 0G Newton Testnet config, 0G protocol endpoints, placeholder 0G DEX routers/tokens, and OmeSwap contract placeholders.
+- `chains/ethereum.ts`: Ethereum mainnet token and Uniswap config.
+- `chains/avalanche.ts`: compatibility Avalanche config, not registered in `REGISTRY`.
+- `index.ts`: registered chains and lookup helpers.
 
-### 0G SDK Layer (`lib/zerog/`)
+Do not hardcode chain IDs, explorer links, token addresses, or router addresses in components. Add or change them in the registry.
 
-Three wrappers for the 0G protocol primitives:
-- **`storage.ts`** — `saveAgentMemory()`, `loadAgentMemory()`, `appendLog()` — persistent agent memory on 0G Storage
-- **`compute.ts`** — `computeInference()`, `agentReason()`, `streamComputeInference()` — AI inference via 0G Compute
-- **`da.ts`** — `submitToDA()`, `postSwarmMessage()`, `postInferenceResult()` — data availability via 0G DA
-- Import everything from `@/lib/zerog` (barrel re-export)
+## 0G SDK Layer
 
-### Contract Layer (`contracts/`)
+Use `@/lib/zerog` wrappers:
 
-`contracts/config.ts` is a backward-compatible shim that re-exports from the chain registry. OmeSwap contracts are pending deployment to 0G Chain — update `omeswapPools` and `omeswapRouter` in `lib/chain-registry/chains/zerog.ts` once deployed.
+- `storage.ts`: upload/download content-addressed blobs and agent memory helpers.
+- `compute.ts`: 0G Compute inference and streaming inference.
+- `da.ts`: data availability submissions for swarm messages and inference results.
+- `private-strategy.ts`: AES-256-GCM strategy sealing, 0G Storage upload, unsealing, and public human summary generation through sealed 0G Compute.
 
-0G-native DEX routers are configured in the chain registry (`zerog_dex`, `zerog_dex_v2`).
+Decision-critical AI calls should use sealed inference.
 
-### State Management (`store/`)
+## Marketplace
 
-Zustand stores — no Redux:
-- `agent-builder.ts` — canvas nodes/edges, workflow save/load (localStorage key `avax-agent-workflows`), bot run logs, backtest results; persistent memory backed by 0G Storage
-- `terminal.ts` — active symbol, watchlist, tile layout (react-grid-layout), bot run state
-- `chart.ts` — chart-level state
-- `transaction-store.ts` — transaction history
+Supabase migrations define creators, strategies, strategy versions, indicators, indicator versions, dependencies, activations, receipts, bookmarks, reports, admin actions, backtests, alpha scores, pricing fields, 0G root hashes, and strategy purchases.
 
-### Marketplace & Creator System (`lib/marketplace/`)
+Publishing flow:
 
-Strategy/indicator marketplace backed by Supabase:
+1. Creator drafts graph payload.
+2. `validateMarketplaceStrategyPayload()` checks required structure.
+3. Indicator dependencies are collected from `subgraph_indicator` nodes.
+4. Compiled payload is encrypted with `STRATEGY_ENCRYPTION_KEY`.
+5. Ciphertext is uploaded to 0G Storage.
+6. Supabase stores only `{ encrypted: true, rootHash }` plus `zerog_root_hash` and a human-readable summary.
 
-- **`creator.ts`** — `ensureCreator()` upserts a row in the `creators` table (required FK before any strategy/indicator write).
-- **`validate-strategy.ts`** — payload validation for strategy creation.
-- **`risk-check.ts`** — `computeRiskScore()` / `getRiskCategory()` used in onboarding and strategy publish.
-- **`wallet-header.ts`** — `requireWallet()` extracts wallet address from request headers; all creator/marketplace API routes call this first.
-- Publish pipeline: validate → backtest → publish (each a separate API sub-route under `creator/strategies/[id]`).
+Paid strategy flow:
 
-### Agent Builder (`lib/agent-builder/`)
+1. Buyer broadcasts an on-chain payment to `NEXT_PUBLIC_TREASURY_WALLET`.
+2. `/api/marketplace/strategies/[id]/purchase` verifies the receipt on 0G with viem.
+3. The server records `strategy_purchases` and access checks read that row.
 
-Visual DAG-based trading bot editor. Key concepts:
+## Agent Builder
 
-- **`BaseNode`** (`nodes/BaseNode.ts`) — abstract class all nodes extend. Implement `execute(inputs, context): Promise<Record<string, unknown>>`.
-- **Node categories**: `data` (PriceFeed, WalletBalance, DEXPrice), `logic` (Condition, Math, MovingAverage, Threshold, Delay, Variable, Accumulator, PreviousValue), `action` (Swap, LimitOrder, Notification, AddChartMarker), `flow` (Start, End, Merge, ScheduleTrigger).
-- **`BotRunner`** (`engine/BotRunner.ts`) — executes the DAG via topological sort. Receives callbacks for logging, status updates, and chart markers.
-- **`BacktestRunner`** (`engine/BacktestRunner.ts`) — replays OHLCV candles through the bot, mocking blockchain action nodes.
-- **`IndicatorCompiler`** (`engine/IndicatorCompiler.ts`) — compiles custom indicator code.
-- **Indicator registry** (`lib/indicators/`) — pub/sub registry for built-in and user-defined indicators. Indicators expose `builtins/` math primitives.
-- **`ExecutionContext`** (`types/agent-builder-canvas.ts`) — runtime context injected into nodes: wallet address, provider/signer, logger, toast, chart access.
-- **`AgentStorageManager`** (`lib/agent-builder/storage.ts`) — localStorage persistence for the simplified agent system (keys: `omeswap_agents`, `omeswap_active_agent`). Distinct from the visual DAG canvas, which uses the Zustand store (`store/agent-builder.ts`, key `avax-agent-workflows`).
+The main builder lives under `components/agent-builder/`, `lib/agent-builder/`, `store/agent-builder.ts`, and `types/agent-builder-canvas.ts`.
 
-### Trading Terminal (`/(app)/terminal`)
+Core pieces:
 
-Resizable tile grid (react-grid-layout). Tiles: `chart`, `watchlist`, `trades`, `depth`, `info`, `order`, `copilot`. Charts use `lightweight-charts` v5. The copilot tile integrates OpenAI.
+- `NODE_REGISTRY` maps node type IDs to executable nodes.
+- `BaseNode` defines `execute(inputs, context)`.
+- Data nodes: price, wallet balance, DEX price, subgraph indicator.
+- Logic nodes: condition, math, moving average, threshold, delay, variable, accumulator, previous value.
+- Action nodes: swap, limit order, notification, chart marker.
+- Flow nodes: start, end, merge, schedule trigger.
+- `BotRunner` executes the DAG.
+- `BacktestRunner` replays historical data.
+- `IndicatorCompiler` compiles custom indicators.
 
-Components live in `components/terminal/`. Tile layout is persisted in the terminal Zustand store.
+Workflow persistence is currently Zustand/localStorage based.
 
-### Web3 Stack
+## ATS Backend
 
-- **wagmi v2 + viem v2** for contract reads/writes
-- **RainbowKit** for wallet modal (WalletConnect, MetaMask, etc.)
-- **ethers v6** used in some hooks alongside viem
-- Custom hooks in `hooks/` — `use-dex-swap.tsx`, `use-dex-aggregator.tsx`, `use-liquidity.tsx`, `use-token-balances.tsx`, `use-wallet-analysis.tsx`, etc.
+Python package `ats/` implements:
 
-### UI
+- Agent 1 data ingestion and normalization.
+- Agent 2 signal generation.
+- Agent 3 graph propagation.
+- Agent 4 regime detection.
+- Agent 5 risk veto and sizing.
+- Agent 6 execution, fill monitoring, portfolio updates, and stop-loss monitoring.
+- LangGraph orchestrator.
+- FastAPI app, WebSocket manager, activation/receipt/chat routes.
 
-shadcn/ui components (Radix primitives + Tailwind). Component aliases configured in `tsconfig.paths.json` — import as `@/components/ui/...`. Dark theme by default via `next-themes`.
+See `doc/ATS_Agent_Execution_Flow.md` and `doc/phases/index.md` for the current backend map.
 
-### Supabase
+## Sub-projects And Generated Files
 
-`supabase/` contains migrations. Client initialized in `lib/supabase/`. Used for persistent user data and wallet analysis.
+- `avax-agent/` is a separate Next.js app. Do not import from it into the root app or from the root app into it unless explicitly refactoring that boundary.
+- `graphify-out/`, nested `graphify-out/`, and `graphify-meta/` are generated graph/audit artifacts. Prefer updating hand-written docs in `doc/` and regenerate graph artifacts when needed.
 
-### `avax-agent/` Sub-project
+## Conventions
 
-A standalone Next.js app in `avax-agent/` — separate `package.json`, `next.config.ts`, and `tsconfig.json`. Contains its own `app/`, `components/`, `lib/`, `store/`, and `types/`. Run independently of the main app; do not import from or into the root project.
-
-### Graphify
-
-A knowledge graph of this codebase lives in `graphify-out/`. Before answering architecture questions, check `graphify-out/GRAPH_REPORT.md`. After modifying code files, run `graphify update .` to keep the graph current (AST-only, no API cost).
-
-## Key Conventions
-
-- Path alias `@/` maps to the project root — use it everywhere instead of relative imports.
-- All contract addresses must come from the chain registry (`lib/chain-registry/chains/zerog.ts`), not be hardcoded in components or hooks.
-- 0G protocol access (Storage, Compute, DA) must go through `lib/zerog/` — never call 0G endpoints directly in components.
-- Node.js v25+ `localStorage` shim is injected via webpack BannerPlugin in `next.config.ts` — do not add another localStorage polyfill.
-- `export const dynamic = "force-dynamic"` is set on the `(app)` layout to prevent static rendering of wallet-dependent pages.
-- 0G Compute `sealed: true` must be used for any AI call that influences an on-chain transaction.
+- Use the `@/` path alias for root app imports.
+- Use existing shadcn/ui and local component patterns.
+- Keep service-role Supabase access server-side only.
+- Keep strategy plaintext out of Supabase; use the private strategy layer.
+- Keep 0G protocol access behind `lib/zerog/`.
+- Do not introduce another `localStorage` polyfill; `next.config.ts` already injects the Node.js v25+ server shim.

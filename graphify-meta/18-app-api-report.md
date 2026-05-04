@@ -1,5 +1,7 @@
 # Graph Report - /home/anik2003/Documents/omeswap/app/api  (2026-04-18)
 
+> Archived generated Graphify report. It may describe an older code snapshot; use [../README.md](../README.md) and [../doc/README.md](../doc/README.md) for current hand-maintained docs.
+
 ## Corpus Check
 - Corpus is ~3,320 words - fits in a single context window. You may not need a graph.
 

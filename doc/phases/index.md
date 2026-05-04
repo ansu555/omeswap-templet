@@ -1,74 +1,64 @@
-# ATS — Implementation Phases Index
+# ATS Implementation Phases
 
-This directory breaks the full ATS implementation (documented in [ATS_Agent_Execution_Flow.md](../ATS_Agent_Execution_Flow.md)) into 9 sequential phases. Each phase builds on the previous one and produces concrete, testable outputs before the next phase begins.
+Last updated: 2026-05-04
 
----
+These phase docs map the Python ATS implementation under `ats/` to the original staged build plan. They now describe the current repo state and validation files.
 
-## Phase map
+## Phase Map
 
-```
-Phase 0 — Foundation
-    Docker + Redis + Postgres + shared models
-    │
-    ▼
-Phase 1 — Agent 1: Data Ingestion
-    Binance WS, NewsAPI, DeFiLlama, CoinGecko
-    price_buffer and normalized_queue flowing
-    │
-    ▼
-Phase 2 — Agent 4: Regime Detection
-    HMM model, BTC vol + funding rate, regime:current in Redis
-    │
-    ├──────────────────────────────────┐
-    ▼                                  ▼
-Phase 3 — Agent 2: Signal Agent    Phase 4 — Agent 3: Graph Agent
-    FinBERT + technicals               DeFi protocol dependency graph
-    signal:latest in Redis             secondary token queuing
-    │                                  │
-    └──────────────┬───────────────────┘
-                   ▼
-Phase 5 — Agent 5: Risk Management
-    10-rule evaluator, Kelly criterion
-    RiskDecision with full position spec
-                   │
-                   ▼
-Phase 6 — Orchestrator (LangGraph)
-    regime → signal+graph → risk → consensus
-    Decision Receipts written to Postgres
-                   │
-                   ▼
-Phase 7 — Agent 6: Execution Agent
-    ccxt Binance, TWAP, fill monitor, stop-loss loop
-    portfolio:state and execution:fills in Redis
-                   │
-                   ▼
-Phase 8 — API, WebSocket & Conversation Layer
-    FastAPI, /api/chat (Claude API + RAG), WebSocket fill feed
-    System is end-to-end complete
+```text
+Phase 0 Foundation
+  -> Phase 1 Data Ingestion
+  -> Phase 2 Regime Detection
+  -> Phase 3 Signal Agent
+  -> Phase 4 Graph Agent
+  -> Phase 5 Risk Agent
+  -> Phase 6 LangGraph Orchestrator
+  -> Phase 7 Execution Agent
+  -> Phase 8 API, WebSocket, Conversation
 ```
 
----
+## Files
 
-## Phase files
-
-| Phase | File | What it builds | Agent |
+| Phase | Doc | Implementation | Validation |
 |---|---|---|---|
-| 0 | [phase-0-foundation.md](phase-0-foundation.md) | Docker, Redis, Postgres, shared models | — |
-| 1 | [phase-1-data-ingestion.md](phase-1-data-ingestion.md) | All data source workers, normalizer, price buffers | Agent 1 |
-| 2 | [phase-2-regime-detection.md](phase-2-regime-detection.md) | HMM regime classifier, BTC vol, funding rate | Agent 4 |
-| 3 | [phase-3-signal-agent.md](phase-3-signal-agent.md) | FinBERT sentiment, technical indicators, signal combiner | Agent 2 |
-| 4 | [phase-4-graph-agent.md](phase-4-graph-agent.md) | DeFi protocol graph, propagation scoring, secondary queuing | Agent 3 |
-| 5 | [phase-5-risk-agent.md](phase-5-risk-agent.md) | 10-rule evaluator, Kelly criterion, position sizing | Agent 5 |
-| 6 | [phase-6-orchestrator.md](phase-6-orchestrator.md) | LangGraph pipeline, consensus, Decision Receipts | Orchestrator |
-| 7 | [phase-7-execution-agent.md](phase-7-execution-agent.md) | ccxt order routing, TWAP, fill monitor, stop-loss | Agent 6 |
-| 8 | [phase-8-api-and-conversation.md](phase-8-api-and-conversation.md) | FastAPI, WebSocket, Claude Conversation Layer | API |
+| 0 | [phase-0-foundation.md](phase-0-foundation.md) | `ats/config.py`, models, Redis/Postgres helpers, queues, Docker/FastAPI skeleton | imported by later suites |
+| 1 | [phase-1-data-ingestion.md](phase-1-data-ingestion.md) | source workers, normalizer, Agent 1 runner | `tests/test_phase1.py` |
+| 2 | [phase-2-regime-detection.md](phase-2-regime-detection.md) | HMM model, feature builder, funding/price readers, training script | `scripts/test_phase2.py` |
+| 3 | [phase-3-signal-agent.md](phase-3-signal-agent.md) | sentiment, technicals, combiner, Agent 2 runner | `scripts/test_phase3.py` |
+| 4 | [phase-4-graph-agent.md](phase-4-graph-agent.md) | static protocol graph, propagator, Agent 3 | `tests/test_phase4.py` |
+| 5 | [phase-5-risk-agent.md](phase-5-risk-agent.md) | portfolio reader, Kelly sizing, Agent 5 veto logic | `tests/test_phase5.py` |
+| 6 | [phase-6-orchestrator.md](phase-6-orchestrator.md) | LangGraph state graph, nodes, consensus, receipt writer | `tests/test_phase6.py` |
+| 7 | [phase-7-execution-agent.md](phase-7-execution-agent.md) | 0G DEX client, order router, fills, portfolio updater, stop-loss monitor | `tests/test_phase7.py` |
+| 8 | [phase-8-api-and-conversation.md](phase-8-api-and-conversation.md) | FastAPI app, WebSocket manager, activation/receipt/chat routes | `tests/test_phase8.py` |
 
----
+## Core Rules
 
-## Key design rules across all phases
+- Agent 1 owns external data ingestion.
+- Other agents read normalized packets and Redis state rather than calling source APIs directly.
+- Agent 5 risk veto is absolute.
+- The orchestrator writes a receipt for every cycle.
+- Agent 6 executes only after consensus is `EXECUTE`.
+- Live execution requires real 0G router/token addresses and a dedicated agent wallet key.
 
-- **Agents never call each other directly.** All inter-agent communication is through Redis keys and `normalized_queue`.
-- **Agent 1 owns all external connections.** No other agent calls Binance, CoinGecko, or NewsAPI directly (except Agent 6, which writes orders only).
-- **Risk Agent veto is absolute.** No consensus rule, user setting, or operating mode can override a Risk veto.
-- **Market orders only for stop-loss exits.** All entries use limit orders to avoid paying spread.
-- **Decision Receipt is written for every cycle** — whether the trade executes or is skipped. The Conversation Layer always has audit data.
+## Run
+
+```bash
+docker compose up redis api
+```
+
+Or locally:
+
+```bash
+uvicorn ats.api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Validation:
+
+```bash
+python -m pytest tests/test_phase1.py -v
+python scripts/test_phase2.py
+python scripts/test_phase3.py
+python -m pytest tests/test_phase4.py tests/test_phase5.py tests/test_phase6.py -v
+python -m pytest tests/test_phase7.py tests/test_phase8.py -v
+```

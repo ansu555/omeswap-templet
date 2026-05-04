@@ -35,3 +35,8 @@ changes: implemented Phase 5 — Agent 5 risk agent; kelly.py (quarter-Kelly, vo
 user: ansu555
 branch: agents
 changes: implemented Phase 6 — Orchestrator & LangGraph; ats/orchestrator/ with graph.py (StateGraph), nodes.py (regime/signal_and_graph/risk), consensus.py, receipt_writer.py, __init__.py (run_pipeline entry point); tests/test_phase6.py 48/48 passed
+
+[2026-05-04 00:00]
+user: akash
+branch: current
+changes: refreshed documentation to current Omeswap state — README, CLAUDE, doc index, ATS execution flow, phase docs, marketplace docs, 0G guideline, built inventory, standalone avax-agent README, and Graphify process notes

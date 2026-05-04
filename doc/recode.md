@@ -4,6 +4,12 @@ All upgrades and changes made to this repository are logged here.
 
 ---
 
+### [2026-05-04 00:00:00 +0530] agent=codex user=akash branch=current
+- upgrade_paths: README.md, CLAUDE.md, avax-agent/README.md, doc/README.md, doc/ATS_Agent_Execution_Flow.md, doc/BUILT.md, doc/guideline.md, doc/idea.md, doc/phases/*.md, doc/marketplace/*.md, GRAPHIFY_PROJECT_PROCESS.md, record.md
+- upgrade_summary: Refreshed the hand-maintained documentation set to match the current Omeswap architecture: Next.js app, 0G/Ethereum chain registry, Supabase marketplace, private 0G strategy storage, Python ATS phases, standalone avax-agent boundary, and generated Graphify artifact policy.
+
+---
+
 ### [2026-05-03 10:05:00 Z] agent=claude user=anik branch=market_place
 - upgrade_paths: doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
 - upgrade_summary: Resolved 4-file rebase conflict between agents and market_place branches. Merged all recode log entries chronologically; accepted theirs for auto-generated graphify files (GRAPH_REPORT.md, graph.html, graph.json). Rebase completed cleanly across all 4 commits.
