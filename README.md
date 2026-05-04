@@ -1,8 +1,8 @@
-# 🌊 Avalanche DEX
+# 🌊 0G DEX
 
-A fully functional decentralized exchange (DEX) built on Avalanche Network with multi-hop routing capabilities.
+A fully functional decentralized exchange (DEX) built on the 0G network with multi-hop routing capabilities.
 
-![Avalanche DEX](https://img.shields.io/badge/Avalanche-DEX-red) ![License](https://img.shields.io/badge/license-MIT-green) ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![React](https://img.shields.io/badge/React-19-blue)
+![0G DEX](https://img.shields.io/badge/0G-DEX-red) ![License](https://img.shields.io/badge/license-MIT-green) ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![React](https://img.shields.io/badge/React-19-blue)
 
 ## ✨ Features
 
@@ -10,7 +10,7 @@ A fully functional decentralized exchange (DEX) built on Avalanche Network with 
 - 🛣️ **Multi-Hop Routing** - Route through multiple pools in a single transaction
 - 💧 **Liquidity Provision** - Add/remove liquidity and earn 0.3% fees
 - 🪙 **Test Token Minting** - Mint test tokens for experimentation
-- 💰 **Low Gas Fees** - Built on Avalanche for 100x cheaper transactions
+- 💰 **Low Gas Fees** - Built on 0G for efficient transactions
 - 🎨 **Modern UI** - Beautiful, responsive interface with shadcn/ui
 - 🔐 **Wallet Integration** - Connect with MetaMask, WalletConnect, and more
 
@@ -43,8 +43,8 @@ Visit: **http://localhost:3000**
 ### 4. Connect & Trade
 
 1. **Connect Wallet** (top right corner)
-2. **Switch to Avalanche Mainnet**
-3. **Get AVAX** for gas fees
+2. **Switch to 0G Mainnet** (or testnet if `NEXT_PUBLIC_0G_NETWORK=testnet`)
+3. **Get 0G** for gas fees
 4. **Mint test tokens** (Mint Tokens tab)
 5. **Add liquidity** or **start swapping**!
 
@@ -52,7 +52,7 @@ Visit: **http://localhost:3000**
 
 - Node.js 18+
 - MetaMask or compatible wallet
-- AVAX (for gas fees)
+- 0G (for gas fees)
 
 ## 🏗️ Tech Stack
 
@@ -66,26 +66,26 @@ Visit: **http://localhost:3000**
 ### Smart Contracts
 - **Language:** Solidity 0.8.20
 - **Framework:** Hardhat
-- **Network:** Avalanche Mainnet
+- **Network:** 0G Mainnet (default; Galileo testnet supported)
 - **Testing:** Chai + Ethers.js
 
 ## 📝 Smart Contracts
 
-### Deployed on Avalanche
+### On 0G
 
-| Contract | Address |
-|----------|---------|
-| **Liquidity Pools** | `0xe63514C2B0842B58A16Ced0C63668BAA91B033Af` |
-| **Swap Router** | `0xFe2108798dC74481d5cCE1588cBD00801758dD6d` |
+Canonical token addresses, DEX routers, and OmeSwap contract addresses are maintained in the chain registry:
 
-[View on Explorer →](https://snowtrace.io)
+- [`lib/chain-registry/chains/zerog.ts`](./lib/chain-registry/chains/zerog.ts)
+- [`contracts/config.ts`](./contracts/config.ts) (re-exports for the app)
+
+[View on 0G Chain Scan →](https://chainscan.0g.ai)
 
 ## 🎯 Use Cases
 
 ### For Traders
 - Swap tokens with minimal slippage
 - Multi-hop routing finds best paths
-- Low gas costs on L2
+- Low gas costs on 0G
 
 ### For Liquidity Providers
 - Earn 0.3% on all swaps
@@ -110,8 +110,7 @@ npm run dev
 
 ### Smart Contract Testing
 ```bash
-cd ../Avalanche_contract
-npx hardhat test
+npm run hardhat:test
 ```
 
 ### Backend Scripts
@@ -134,7 +133,7 @@ npm run hardhat:quickstart
 
 ## 🔒 Security
 
-⚠️ **Mainnet**: This DEX is deployed on Avalanche Mainnet.
+⚠️ **Mainnet**: Deployments target 0G networks. Treat on-chain funds and contracts according to your own risk and audit posture.
 
 For production use:
 - Professional security audit required
@@ -147,7 +146,7 @@ For production use:
 ### Project Structure
 
 ```
-Avalanche_Dex/
+omeswap/
 ├── app/                  # Next.js pages
 ├── components/           # React components
 │   ├── trade/           # DEX trading components
@@ -186,11 +185,14 @@ ATS_AGENT_TRANSPORT=axl bun run axl:demo BTC solo
 
 ## 🌐 Network Configuration
 
-### Avalanche Mainnet
+### 0G Mainnet
 
-- **Chain ID:** 43114
-- **RPC URL:** https://api.avax.network/ext/bc/C/rpc
-- **Explorer:** https://snowtrace.io
+- **Chain ID:** 16661
+- **RPC URL:** https://evmrpc.0g.ai
+- **Explorer:** https://chainscan.0g.ai
+- **Native token:** 0G
+
+Use `NEXT_PUBLIC_0G_NETWORK=testnet` for Galileo testnet (chain ID 16602); see [`lib/chain-registry/chains/zerog.ts`](./lib/chain-registry/chains/zerog.ts) for RPC and explorer URLs.
 
 Add to MetaMask:
 1. Networks → Add Network → Add Manually
@@ -234,7 +236,7 @@ MIT License - see [LICENSE](./LICENSE) file
 ## 🙏 Acknowledgments
 
 - Uniswap V2 for the AMM design
-- Avalanche Network for L2 infrastructure
+- 0G for the underlying network
 - shadcn/ui for beautiful components
 - wagmi & viem for Web3 integration
 
@@ -242,7 +244,7 @@ MIT License - see [LICENSE](./LICENSE) file
 
 - **Issues:** GitHub Issues
 - **Docs** [Integration Guide](./DEX_INTEGRATION_GUIDE.md)
-- **Explorer:** https://snowtrace.io
+- **Explorer:** https://chainscan.0g.ai
 
 ## 🎉 Getting Started
 
@@ -255,6 +257,6 @@ npm run dev
 
 ---
 
-**Built with ❤️ on Avalanche Network**
+**Built with ❤️ on 0G**
 
 ⭐ Star this repo if you found it helpful!
