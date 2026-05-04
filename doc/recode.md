@@ -125,3 +125,27 @@ All upgrades and changes made to this repository are logged here.
 ### [2026-05-03 21:49:00 +0530] agent=claude user=ansu555 branch=swaping
 - upgrade_paths: components/layout/header.tsx, components/ui/nav-bar.tsx
 - upgrade_summary: Fixed nav overflow — replaced absolute/centered nav with flex-1 layout so Builder (9th item) is never clipped; reduced item padding px-6→px-3.5 and gap gap-3→gap-0.5 for a compact, fully-visible nav.
+
+### [2026-05-04 16:45:26 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: .env.local, .axl/node-config-local-a.json, .axl/node-config-local-b.json, .axl/private-local-a.pem, .axl/private-local-b.pem
+- upgrade_summary: Completed local two-node AXL demo setup end-to-end: built node binary, generated local peer identities, started Node A/Node B + MCP router + ats-agents service, fixed AXL env mapping, and validated live cross-node ATS events via `bun run axl:demo BTC solo` with successful remote regime/signal/graph/risk execution.
+
+### [2026-05-04 16:47:30 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: .gitignore
+- upgrade_summary: Added local-only AXL and Go tooling artifact paths to `.gitignore` to prevent unnecessary generated setup files from appearing in git status.
+
+### [2026-05-04 17:44:49 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: app/(app)/trade/page.tsx, components/trade/PoolComparisonPanel.tsx, components/trade/SwapCardDex.tsx, hooks/use-dex-aggregator.tsx, lib/chain-registry/chains/zerog.ts, lib/chain-registry/index.ts, lib/agent-builder/zerog/provider.ts, contracts/config.ts, lib/dex/markets.ts, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Migrated the trade page to a 0G-only flow by removing Ethereum/Uniswap switching, updating swap defaults/copy from Avalanche assumptions, and wiring the Chart toggle to show Jaine pool metrics alongside OmeSwap pool status. Updated 0G network config to current chain IDs (mainnet 16661, Galileo testnet 16602) with environment-selectable endpoints, then refreshed Graphify metadata.
+
+### [2026-05-04 17:51:57 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: components/trade/SwapCardDex.tsx, doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Added a direct wrong-network recovery action on the trade swap card so users can switch to the configured 0G chain from inside the UI instead of being blocked on Ethereum. Kept validation green via full production build and refreshed Graphify metadata.
+
+### [2026-05-04 17:58:58 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: hooks/use-dex-aggregator.tsx, components/trade/SwapCardDex.tsx, doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Improved no-liquidity handling by distinguishing missing router configuration from real pool absence. The swap UI now offers direct fallback to 0G Hub Swap (Jaine) when onchain router addresses are placeholders, plus a quick W0G→USDC pair suggestion when configured routers exist but the selected pair has no route.
+
+### [2026-05-04 18:18:54 +0530] agent=codex user=ansu555 branch=main
+- upgrade_paths: components/layout/header.tsx, components/terminal/tiles/OrderPanelTile.tsx, app/(app)/pool/[id]/page.tsx, doc/recode.md, graphify-out/GRAPH_REPORT.md, graphify-out/graph.html, graphify-out/graph.json
+- upgrade_summary: Completed trade-page disable rollout by removing the Trade tab from the primary nav and replacing internal /trade entry points with external 0G Hub actions. Pool and terminal quick actions now direct users to Hub while preserving in-page swap card behavior where applicable.

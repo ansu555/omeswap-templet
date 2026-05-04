@@ -15,7 +15,7 @@ import { ERC20ABI } from "@/contracts/abis";
 import { getChainConfig, getDefaultChainId } from "@/lib/chain-registry";
 import { useTransactionStore } from "@/store/transaction-store";
 
-// UniswapV2-compatible router ABI (TraderJoe V1, Pangolin)
+// UniswapV2-compatible router ABI
 const V1_ROUTER_ABI = [
   {
     inputs: [
@@ -113,6 +113,13 @@ export interface DexQuote {
   isBest: boolean;
 }
 
+function isPlaceholderAddress(address: Address | undefined) {
+  if (!address) return true;
+  const lower = address.toLowerCase();
+  if (lower === "0x0000000000000000000000000000000000000000") return true;
+  return /^0x0{20,}[0-9a-f]{1,20}$/i.test(lower);
+}
+
 export function useDexAggregator(
   tokenInSymbol: string,
   tokenOutSymbol: string,
@@ -136,9 +143,18 @@ export function useDexAggregator(
     .filter(r => r.type === 'uniswapV2')
     .map(r => ({ dex: r.id as DexSource, dexName: r.name, router: r.routerAddress }));
   const tjV2 = chainConfig.dexRouters.find(r => r.type === 'traderJoeV2');
+  const activeV1DexConfig = v1DexConfig.filter(({ router }) => !isPlaceholderAddress(router));
+  const hasConfiguredTjV2 =
+    !!tjV2 &&
+    !isPlaceholderAddress(tjV2.routerAddress) &&
+    !isPlaceholderAddress(tjV2.quoterAddress);
+  const hasConfiguredRouters = activeV1DexConfig.length > 0 || hasConfiguredTjV2;
 
   const [quotes, setQuotes] = useState<DexQuote[]>([]);
-  const [selectedDex, setSelectedDex] = useState<DexSource>("traderjoe_v2");
+  const [selectedDex, setSelectedDex] = useState<DexSource>(() => {
+    if (hasConfiguredTjV2 && tjV2?.id) return tjV2.id as DexSource;
+    return (activeV1DexConfig[0]?.dex ?? v1DexConfig[0]?.dex ?? "zerog_dex") as DexSource;
+  });
   const [isLoadingQuotes, setIsLoadingQuotes] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,10 +166,14 @@ export function useDexAggregator(
   const selectedQuote =
     quotes.find((q) => q.dex === selectedDex) ?? quotes[0] ?? null;
 
+  const defaultSpender =
+    (hasConfiguredTjV2 ? tjV2?.routerAddress : undefined) ??
+    activeV1DexConfig[0]?.router ??
+    "0x0000000000000000000000000000000000000000";
   const approvalSpender: Address =
-    selectedDex === "traderjoe_v2"
-      ? (tjV2?.routerAddress ?? v1DexConfig[0]?.router)
-      : (selectedDexConfig?.router ?? v1DexConfig[0]?.router);
+    selectedDex === tjV2?.id && hasConfiguredTjV2
+      ? tjV2.routerAddress
+      : (selectedDexConfig?.router ?? defaultSpender);
 
   // Balance query
   const { data: balance, refetch: refetchBalance } = useReadContract({
@@ -172,7 +192,7 @@ export function useDexAggregator(
     functionName: "allowance",
     args: [address as Address, approvalSpender],
     chainId,
-    query: { enabled: !!address && !!tokenIn },
+    query: { enabled: !!address && !!tokenIn && hasConfiguredRouters },
   });
 
   const {
@@ -224,13 +244,18 @@ export function useDexAggregator(
         setQuotes([]);
         return;
       }
+      if (!hasConfiguredRouters) {
+        setQuotes([]);
+        setIsLoadingQuotes(false);
+        return;
+      }
 
       setIsLoadingQuotes(true);
       const amountIn = parseUnits(amountInRaw, tokenIn.decimals);
       const newQuotes: DexQuote[] = [];
 
       // --- TraderJoe V2 quote ---
-      if (tjV2?.quoterAddress) {
+      if (hasConfiguredTjV2 && tjV2?.quoterAddress) {
         try {
           const quote = (await publicClient.readContract({
             address: tjV2.quoterAddress,
@@ -258,8 +283,8 @@ export function useDexAggregator(
         }
       }
 
-      // --- V1 DEX quotes (TraderJoe V1, Pangolin, …) ---
-      for (const { dex, dexName, router } of v1DexConfig) {
+      // --- V1 DEX quotes ---
+      for (const { dex, dexName, router } of activeV1DexConfig) {
         // Always try direct path
         const paths: Address[][] = [[tokenIn.address, tokenOut.address]];
 
@@ -316,14 +341,19 @@ export function useDexAggregator(
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [amountInRaw, tokenInSymbol, tokenOutSymbol, publicClient]);
+  }, [amountInRaw, tokenInSymbol, tokenOutSymbol, publicClient, hasConfiguredRouters, hasConfiguredTjV2]);
 
   const needsApproval = (): boolean => {
+    if (!hasConfiguredRouters) return false;
     if (!amountInRaw || allowance === undefined || !tokenIn) return true;
     return parseUnits(amountInRaw, tokenIn.decimals) > (allowance as bigint);
   };
 
   const executeSwapTx = () => {
+    if (!hasConfiguredRouters) {
+      setError("Routers are not configured for this 0G deployment yet.");
+      return;
+    }
     if (!selectedQuote || !address || !amountInRaw || !tokenIn) return;
 
     const amountIn = parseUnits(amountInRaw, tokenIn.decimals);
@@ -357,7 +387,11 @@ export function useDexAggregator(
       });
     } else {
       const router = v1DexConfig.find((d) => d.dex === selectedDex)?.router
-        ?? v1DexConfig[0]?.router;
+        ?? activeV1DexConfig[0]?.router;
+      if (!router) {
+        setError("No configured router available for this swap.");
+        return;
+      }
       writeSwap({
         address: router,
         abi: V1_ROUTER_ABI,
@@ -369,6 +403,10 @@ export function useDexAggregator(
   };
 
   const executeSwap = () => {
+    if (!hasConfiguredRouters) {
+      setError("Routers are not configured for this 0G deployment yet.");
+      return;
+    }
     if (!selectedQuote || !address || !amountInRaw || !tokenIn) return;
     setError(null);
 
@@ -431,6 +469,7 @@ export function useDexAggregator(
     setSelectedDex,
     selectedQuote,
     isLoadingQuotes,
+    hasConfiguredRouters,
     estimatedOutput: selectedQuote?.amountOutFormatted ?? "0",
     balance:
       balance !== undefined && tokenIn

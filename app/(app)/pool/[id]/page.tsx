@@ -37,6 +37,7 @@ const POOL_PAIRS: { [key: string]: { token0: string; token1: string } } = {
   "8": { token0: "WBTCe", token1: "USDC" },
   "9": { token0: "WAVAX", token1: "USDC" },
 };
+const HUB_SWAP_URL = "https://hub.0g.ai/swap";
 
 export default function PoolPage() {
   const params = useParams();
@@ -45,6 +46,9 @@ export default function PoolPage() {
   const { address, isConnected } = useWallet();
   const [timeRange, setTimeRange] = useState("1D");
   const [showSwap, setShowSwap] = useState(false);
+  const openHubSwap = () => {
+    window.open(HUB_SWAP_URL, "_blank", "noopener,noreferrer");
+  };
 
   const poolPair = POOL_PAIRS[poolId];
   const token0 = poolPair ? TOKENS[poolPair.token0] : null;
@@ -357,9 +361,9 @@ export default function PoolPage() {
                 <Button
                   className="flex-1"
                   variant="outline"
-                  onClick={() => router.push('/trade')}
+                  onClick={openHubSwap}
                 >
-                  + Add liquidity
+                  Open 0G Hub
                 </Button>
               </div>
             )}
@@ -537,7 +541,7 @@ export default function PoolPage() {
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1">Network</div>
-                  <div className="font-medium">Avalanche Mainnet</div>
+                  <div className="font-medium">0G Network</div>
                 </div>
               </div>
             </Card>
@@ -552,18 +556,18 @@ export default function PoolPage() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() => router.push('/trade')}
+                    onClick={openHubSwap}
                   >
                     <Droplet className="w-4 h-4 mr-2" />
-                    Add Liquidity
+                    Open 0G Hub
                   </Button>
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() => router.push('/trade')}
+                    onClick={openHubSwap}
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Swap Tokens
+                    Swap on Hub
                   </Button>
                   <Button
                     className="w-full justify-start"

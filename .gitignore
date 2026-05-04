@@ -39,3 +39,9 @@ next-env.d.ts
 # graphify outputs - ignore extraction cache folders everywhere
 **/graphify-out/cache/
 .graphify-runs/*/cache/
+
+# local AXL demo/tooling artifacts
+.axl/
+.tooling/
+.gocache/
+.gopath/

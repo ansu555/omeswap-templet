@@ -5,7 +5,7 @@
  * as the single backward-compatible import point for the rest of the codebase.
  * To change addresses, update lib/chain-registry/chains/zerog.ts.
  *
- * Default chain: 0G Newton Testnet (chainId 16600)
+ * Default chain: selected 0G network from the chain registry.
  */
 
 import { getChainConfig, getDefaultChainId } from '@/lib/chain-registry'

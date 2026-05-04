@@ -19,14 +19,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { getExplorerLink, getDexRouters, getDefaultChainId } from '@/lib/chain-registry';
+import { getExplorerLink, getDexRouters, getDefaultChainId, getChainConfig } from "@/lib/chain-registry";
 
 type SwapMode = "swap" | "limit" | "buy" | "sell";
 
 const DEX_LABEL_COLORS: Record<string, string> = {
-  traderjoe_v2: 'text-orange-400',
-  traderjoe: 'text-orange-300',
-  pangolin: 'text-pink-400',
+  zerog_dex: "text-violet-300",
+  zerog_dex_v2: "text-violet-200",
 };
 
 const DEX_LABELS: Record<string, { name: string; color: string }> =
@@ -37,13 +36,17 @@ const DEX_LABELS: Record<string, { name: string; color: string }> =
     ])
   );
 
+const DEFAULT_CHAIN_ID = getDefaultChainId();
+const DEFAULT_CHAIN_NAME = getChainConfig(DEFAULT_CHAIN_ID).chain.name;
+const HUB_SWAP_URL = "https://hub.0g.ai/swap";
+
 export function SwapCardDex() {
-  const { isConnected, chain, address } = useWallet();
+  const { isConnected, chain, address, switchChain } = useWallet();
 
   const [mode, setMode] = useState<SwapMode>("swap");
-  const [tokenIn, setTokenIn] = useState<string>('WAVAX');
-  const [tokenOut, setTokenOut] = useState<string>('USDC'); // USDC.e — best V1 liquidity
-  const [amountIn, setAmountIn] = useState<string>('');
+  const [tokenIn, setTokenIn] = useState<string>("W0G");
+  const [tokenOut, setTokenOut] = useState<string>("USDC");
+  const [amountIn, setAmountIn] = useState<string>("");
   const [slippage, setSlippage] = useState<number>(0.5);
   const [isPayTokenOpen, setIsPayTokenOpen] = useState(false);
   const [isReceiveTokenOpen, setIsReceiveTokenOpen] = useState(false);
@@ -56,6 +59,7 @@ export function SwapCardDex() {
     setSelectedDex,
     estimatedOutput,
     balance,
+    hasConfiguredRouters,
     needsApproval,
     executeSwap,
     isApproving,
@@ -66,9 +70,21 @@ export function SwapCardDex() {
     isLoadingQuotes,
   } = useDexAggregator(tokenIn, tokenOut, amountIn, slippage);
 
-  // tokenIn/tokenOut are object KEYS (e.g. 'WAVAX', 'nUSDC'), not symbols
+  // tokenIn/tokenOut are object keys in TOKEN_ADDRESSES (e.g. "W0G", "USDC")
   const payToken = TOKEN_ADDRESSES[tokenIn] ?? TOKEN_LIST[0];
   const receiveToken = TOKEN_ADDRESSES[tokenOut] ?? TOKEN_LIST[1];
+  const selectedDexLabel = DEX_LABELS[selectedDex] ?? { name: "Jaine Hub", color: "text-primary" };
+  const isSuggestedPair = tokenIn === "W0G" && tokenOut === "USDC";
+
+  const openHubSwap = () => {
+    window.open(HUB_SWAP_URL, "_blank", "noopener,noreferrer");
+  };
+
+  const setSuggestedPair = () => {
+    setTokenIn("W0G");
+    setTokenOut("USDC");
+    setAmountIn("");
+  };
 
   const handleSwapDirection = () => {
     setTokenIn(tokenOut);
@@ -90,10 +106,10 @@ export function SwapCardDex() {
   };
 
   const hasValidAmount = amountIn && parseFloat(amountIn) > 0;
-  const hasSufficientBalance = parseFloat(balance) >= parseFloat(amountIn || '0');
+  const hasSufficientBalance = parseFloat(balance) >= parseFloat(amountIn || "0");
   const hasQuote = quotes.length > 0 && parseFloat(estimatedOutput) > 0;
   const isValidSwap = hasValidAmount && hasSufficientBalance && hasQuote;
-  const isWrongNetwork = isConnected && chain?.id !== getDefaultChainId();
+  const isWrongNetwork = isConnected && chain?.id !== DEFAULT_CHAIN_ID;
 
   const TokenIcon = ({ symbol }: { symbol: string }) => (
     <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
@@ -168,7 +184,7 @@ export function SwapCardDex() {
       <div className="swap-card w-full max-w-md p-8 text-center">
         <h3 className="text-xl font-semibold mb-4">Connect Your Wallet</h3>
         <p className="text-muted-foreground mb-6">
-          Connect your wallet to swap tokens on Avalanche
+          Connect your wallet to swap tokens on 0G
         </p>
         <WalletConnect variant="default" />
       </div>
@@ -180,11 +196,17 @@ export function SwapCardDex() {
       <div className="swap-card w-full max-w-md p-8 text-center">
         <h3 className="text-xl font-semibold mb-4 text-destructive">Wrong Network</h3>
         <p className="text-muted-foreground mb-6">
-          Please switch to Avalanche Mainnet to use this DEX
+          Please switch to the configured 0G network to use this DEX
         </p>
+        <button
+          onClick={() => switchChain({ chainId: DEFAULT_CHAIN_ID })}
+          className="swap-action-btn mb-4"
+        >
+          Switch to {DEFAULT_CHAIN_NAME}
+        </button>
         <div className="text-sm text-muted-foreground">
           Current: {chain?.name} (ID: {chain?.id})<br />
-          Required: Chain ID: {getDefaultChainId()}
+          Required: Chain ID: {DEFAULT_CHAIN_ID}
         </div>
       </div>
     );
@@ -324,11 +346,35 @@ export function SwapCardDex() {
             {isLoadingQuotes ? (
               <div className="text-xs text-muted-foreground animate-pulse">Fetching quotes...</div>
             ) : quotes.length === 0 ? (
-              <div className="text-xs text-muted-foreground">No liquidity found for this pair</div>
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {hasConfiguredRouters
+                    ? "No liquidity found for this pair."
+                    : "In-app router addresses are still placeholders for this 0G deployment."}
+                </div>
+
+                {!hasConfiguredRouters ? (
+                  <a
+                    href={HUB_SWAP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    Open 0G Hub Swap (Jaine)
+                  </a>
+                ) : !isSuggestedPair ? (
+                  <button
+                    onClick={setSuggestedPair}
+                    className="inline-flex text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    Try W0G → USDC pair
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <div className="space-y-1.5">
                 {quotes.map((quote) => {
-                  const label = DEX_LABELS[quote.dex];
+                  const label = DEX_LABELS[quote.dex] ?? { name: quote.dexName, color: "text-primary" };
                   const isSelected = selectedDex === quote.dex;
                   return (
                     <button
@@ -383,23 +429,31 @@ export function SwapCardDex() {
 
         {/* Action Button */}
         <button
-          onClick={() => { if (isValidSwap && !isLoading) executeSwap(); }}
-          disabled={!isValidSwap || isLoading}
+          onClick={() => {
+            if (!hasConfiguredRouters) {
+              openHubSwap();
+              return;
+            }
+            if (isValidSwap && !isLoading) executeSwap();
+          }}
+          disabled={hasConfiguredRouters ? !isValidSwap || isLoading : false}
           className="swap-action-btn mt-4"
         >
           {isLoading
             ? isApproving
               ? `Approving ${payToken.symbol}...`
               : 'Swapping...'
-            : !hasValidAmount
+            : !hasConfiguredRouters
+              ? "Open 0G Hub Swap"
+              : !hasValidAmount
               ? 'Enter Amount'
               : !hasSufficientBalance
                 ? 'Insufficient Balance'
                 : !hasQuote
                   ? 'No Liquidity'
                   : needsApproval
-                    ? `Approve ${payToken.symbol} on ${DEX_LABELS[selectedDex].name}`
-                    : `Swap via ${DEX_LABELS[selectedDex].name}`}
+                    ? `Approve ${payToken.symbol} on ${selectedDexLabel.name}`
+                    : `Swap via ${selectedDexLabel.name}`}
         </button>
 
         {/* Success */}

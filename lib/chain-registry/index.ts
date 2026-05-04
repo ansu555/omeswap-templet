@@ -1,9 +1,9 @@
 /**
  * Chain Registry — central lookup for all supported chain configs.
  *
- * Default chain: 0G Newton Testnet (chainId 16600)
+ * Default chain: 0G (selected in lib/chain-registry/chains/zerog.ts)
  * 0G is an EVM-compatible Layer-1 for AI agents with four core primitives:
- *   - 0G Chain    — EVM execution (chainId 16600)
+ *   - 0G Chain    — EVM execution (Mainnet 16661 / Testnet 16602)
  *   - 0G Storage  — decentralized KV + Log for persistent agent memory
  *   - 0G DA       — infinitely scalable data availability
  *   - 0G Compute  — decentralized AI inference (qwen3, GLM-5-FP8, etc.)
@@ -50,7 +50,7 @@ export function getSupportedChains(): ChainConfig[] {
   return Object.values(REGISTRY)
 }
 
-/** Returns the default chain ID (0G Newton Testnet: 16600) */
+/** Returns the default chain ID for the selected 0G network */
 export function getDefaultChainId(): number {
   return DEFAULT_CHAIN_ID
 }
@@ -69,8 +69,7 @@ export function getDexRouters(chainId: number): DexRouter[] {
  * Builds a block-explorer URL for the given chain.
  *
  * @example
- *   getExplorerLink(16600, 'tx', '0xabc…')
- *   // → 'https://chainscan-newton.0g.ai/tx/0xabc…'
+ *   getExplorerLink(getDefaultChainId(), 'tx', '0xabc…')
  */
 export function getExplorerLink(
   chainId: number,

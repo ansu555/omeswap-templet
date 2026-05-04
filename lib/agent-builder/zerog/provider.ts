@@ -4,6 +4,8 @@
  * This is the authoritative provider for the agent builder.
  * Import from here in all new agent nodes and builder code.
  */
+import { ZEROG_CHAIN_ID as ACTIVE_ZEROG_CHAIN_ID } from '@/lib/chain-registry/chains/zerog'
+
 export { getPublicProvider, connectWallet } from '../evm-provider'
 export {
   ZEROG_RPC,
@@ -13,4 +15,4 @@ export {
 } from '@/lib/chain-registry/chains/zerog'
 
 /** The default 0G Chain ID */
-export const ZEROG_DEFAULT_CHAIN_ID = 16600
+export const ZEROG_DEFAULT_CHAIN_ID = ACTIVE_ZEROG_CHAIN_ID

@@ -38,7 +38,7 @@ export const DEX_MARKETS: DexMarketConfig[] = [
     kind: "spot",
     network: "0g",
     networkName: "0G",
-    chainId: 16601,
+    chainId: 16661,
     dex: "Jaine",
     poolAddress: "0x961da9b2fd03e04b088a90843a93e66f13112d0a",
     displayToken: "quote",
@@ -54,7 +54,7 @@ export const DEX_MARKETS: DexMarketConfig[] = [
     },
     leverage: null,
     color: "bg-violet-500",
-    executionVenue: "0G DEX adapter",
+    executionVenue: "Jaine Hub",
     fallback: {
       priceUsd: 0.531342,
       change24h: 0.153,
