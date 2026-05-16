@@ -165,12 +165,14 @@ export default function OnboardingPage() {
       })
 
       if (response.status === 409) {
+        window.localStorage.setItem('onboarding_wallet', normalizedAddress)
         router.replace('/explore')
         return
       }
 
       if (!response.ok) throw new Error('Unable to submit onboarding.')
 
+      window.localStorage.setItem('onboarding_wallet', normalizedAddress)
       router.replace('/explore')
     } catch {
       setSubmitError('Submission failed. Please try again.')
