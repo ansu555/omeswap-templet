@@ -1,8 +1,21 @@
+import { defineChain } from 'viem'
 import { mainnet } from 'viem/chains'
 import type { ChainConfig } from '../types'
 
+// viem's bundled mainnet RPC (eth.merkle.io) blocks browser requests via CORS.
+// Override with Cloudflare's public endpoint which allows all origins.
+const ETH_RPC = process.env.NEXT_PUBLIC_ETH_RPC ?? 'https://cloudflare-eth.com'
+
+const mainnetWithCors = defineChain({
+  ...mainnet,
+  rpcUrls: {
+    ...mainnet.rpcUrls,
+    default: { http: [ETH_RPC] },
+  },
+})
+
 export const ethereumConfig: ChainConfig = {
-  chain: mainnet,
+  chain: mainnetWithCors,
   nativeWrapped: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
   hubTokens: [
     '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
