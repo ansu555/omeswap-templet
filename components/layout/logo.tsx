@@ -13,7 +13,7 @@ export function Logo() {
         className="flex-shrink-0"
       />
       <span className="text-lg font-semibold text-foreground">
-        Omeswap
+        Omega
       </span>
     </div>
   );

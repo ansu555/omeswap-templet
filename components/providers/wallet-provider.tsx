@@ -35,7 +35,7 @@ export function WalletProvider({
   const [config] = useState(() => {
     const supportedChains = getSupportedChains().map(c => c.chain) as [Chain, ...Chain[]];
     return getDefaultConfig({
-      appName: "Omeswap",
+      appName: "Omega",
       projectId: walletConnectProjectId || "walletconnect-disabled",
       chains: supportedChains,
       wallets: [

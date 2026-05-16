@@ -230,7 +230,7 @@ export default function OnboardingPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium tracking-widest text-white/25 uppercase">
-                Omeswap
+                Omega
               </span>
               <div className="flex items-center gap-3">
                 <button

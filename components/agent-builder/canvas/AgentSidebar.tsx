@@ -56,7 +56,7 @@ interface ApiMessage {
 }
 
 const WELCOME_MESSAGE =
-  "Hi! I'm your **Omeswap bot builder agent**.\n\nTell me what 0G trading strategy you want and I'll build it on the canvas.\n\n*For example: \"Build a BTC momentum tracker that marks the chart when price rises\"*";
+  "Hi! I'm your **Omega bot builder agent**.\n\nTell me what 0G trading strategy you want and I'll build it on the canvas.\n\n*For example: \"Build a BTC momentum tracker that marks the chart when price rises\"*";
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
@@ -629,7 +629,7 @@ export default function AgentSidebar() {
             AI Agent
           </p>
           <p className="text-white/30 text-[10px] mt-0.5 leading-none">
-            Omeswap Bot Builder
+            Omega Bot Builder
           </p>
         </div>
         {loading && (

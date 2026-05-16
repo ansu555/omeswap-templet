@@ -91,7 +91,7 @@ Nodes on canvas: ${canvasState.nodeCount}. Use this to understand what's already
         "Content-Type": "application/json",
         "HTTP-Referer":
           process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-        "X-Title": "Omeswap Agent Builder",
+        "X-Title": "Omega Agent Builder",
       },
       body: JSON.stringify({
         model,

@@ -124,7 +124,7 @@ export function PoolComparisonPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Pool Details</h3>
-          <p className="text-sm text-muted-foreground">Jaine vs OmeSwap</p>
+          <p className="text-sm text-muted-foreground">Jaine vs Omega</p>
         </div>
         <span className="text-[11px] px-2 py-1 rounded-full border border-primary/30 text-primary">
           0G
@@ -200,12 +200,12 @@ export function PoolComparisonPanel() {
       <div className="rounded-xl border border-border/70 bg-muted/25 p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Droplets className="w-4 h-4 text-primary" />
-          <span>Your OmeSwap Pool</span>
+          <span>Your Omega Pool</span>
         </div>
 
         {!isOmeSwapConfigured ? (
           <p className="text-sm text-muted-foreground">
-            OmeSwap pool contract is not deployed on this network yet.
+            Omega pool contract is not deployed on this network yet.
           </p>
         ) : (
           <>

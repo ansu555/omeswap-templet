@@ -27,7 +27,7 @@ import { getDexMarketConfig } from "@/lib/dex/markets";
 import { useTransactionStore } from "@/store/transaction-store";
 
 const OMESWAP_DEX_ID = "omeswap" as const;
-const OMESWAP_DEX_NAME = "OmeSwap";
+const OMESWAP_DEX_NAME = "Omega";
 
 const OMESWAP_POOLS_ABI = [
   {

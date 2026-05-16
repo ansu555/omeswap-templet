@@ -10,13 +10,13 @@ export function Header() {
       <div className="flex items-center gap-2 rounded-full bg-background/5 border border-border backdrop-blur-lg shadow-lg pl-1.5 pr-3 py-1">
         <Image
           src="/logo.png"
-          alt="Omeswap"
+          alt="Omega"
           width={28}
           height={28}
           className="flex-shrink-0 rounded-full"
           priority
         />
-        <span className="text-sm font-semibold text-foreground tracking-tight">Omeswap</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight">Omega</span>
       </div>
       <nav className="flex items-center gap-5 text-sm font-medium">
         <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground">

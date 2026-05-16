@@ -399,7 +399,7 @@ export function useDexSwap() {
         walletAddress: address,
         timestamp: Date.now(),
         source: "dex-swap",
-        dex: "OmeSwap Pools",
+        dex: "Omega Pools",
       });
     }
   }, [isSuccess, swapHash]);
