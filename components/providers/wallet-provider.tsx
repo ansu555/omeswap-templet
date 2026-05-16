@@ -8,6 +8,12 @@ import {
   RainbowKitProvider,
   darkTheme,
 } from "@rainbow-me/rainbowkit";
+import {
+  coinbaseWallet,
+  injectedWallet,
+  metaMaskWallet,
+  walletConnectWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 import { getSupportedChains } from "@/lib/chain-registry";
 import type { Chain } from "viem/chains";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -16,6 +22,10 @@ interface WalletProviderProps {
   children: ReactNode;
   initialState?: any;
 }
+
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const hasWalletConnectProjectId =
+  !!walletConnectProjectId && walletConnectProjectId !== "YOUR_PROJECT_ID";
 
 export function WalletProvider({
   children,
@@ -26,9 +36,16 @@ export function WalletProvider({
     const supportedChains = getSupportedChains().map(c => c.chain) as [Chain, ...Chain[]];
     return getDefaultConfig({
       appName: "Omeswap",
-      projectId:
-        process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID",
+      projectId: walletConnectProjectId || "walletconnect-disabled",
       chains: supportedChains,
+      wallets: [
+        {
+          groupName: "Recommended",
+          wallets: hasWalletConnectProjectId
+            ? [metaMaskWallet, coinbaseWallet, walletConnectWallet]
+            : [injectedWallet, metaMaskWallet, coinbaseWallet],
+        },
+      ],
       storage: createStorage({
         storage: cookieStorage,
       }),

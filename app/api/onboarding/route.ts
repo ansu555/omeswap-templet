@@ -13,7 +13,7 @@ import {
   isValidWalletAddress,
   normalizeWalletAddress,
 } from '@/lib/onboarding'
-import { createSupabaseAdminClient } from '@/lib/supabase/server'
+import { tryCreateSupabaseAdminClient } from '@/lib/supabase/server'
 
 interface ExistingProfilePayload {
   exists: true
@@ -79,7 +79,7 @@ function shouldUseLocalDevFallback(error: {
   code?: string | null
   message?: string | null
 } | null): boolean {
-  return process.env.NODE_ENV !== 'production' && isSupabaseMissingTableError(error)
+  return isSupabaseMissingTableError(error)
 }
 
 function logLocalFallbackOnce() {
@@ -169,7 +169,12 @@ export async function GET(
   const walletAddress = normalizeWalletAddress(walletParam)
 
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = tryCreateSupabaseAdminClient()
+
+    if (!supabase) {
+      return NextResponse.json({ exists: false })
+    }
+
     const { data, error } = await supabase
       .from('user_risk_profiles')
       .select('risk_score, risk_category')
@@ -256,7 +261,17 @@ export async function POST(request: NextRequest) {
   const storedAnswers = buildStoredAnswers(responses)
 
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = tryCreateSupabaseAdminClient()
+
+    if (!supabase) {
+      return NextResponse.json({
+        success: true,
+        riskScore,
+        riskCategory,
+        storage: 'no-db-fallback',
+      })
+    }
+
     const { error } = await supabase.from('user_risk_profiles').insert({
       wallet_address: walletAddress,
       questionnaire_version: RISK_QUESTIONNAIRE_VERSION,
