@@ -26,6 +26,8 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { DexCandle, DexMarket, DexTrade } from "@/lib/dex/types";
+import { pollLivePrice } from "@/lib/terminal/data/livePriceTick";
+import { CandleAggregator } from "@/lib/terminal/data/candleAggregator";
 
 type BtcCandle = CandlestickData<UTCTimestamp> & {
   volume: number;
@@ -100,6 +102,8 @@ export function Chart({ marketId }: { marketId: string }) {
   const macdSignalRef = useRef<ISeriesApi<"Line"> | null>(null);
   const macdHistogramRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const candlesRef = useRef<BtcCandle[]>([]);
+  const aggrRef = useRef<CandleAggregator | null>(null);
+  const stopLiveTickRef = useRef<(() => void) | null>(null);
   const [interval, setInterval] = useState<ChartInterval>("1m");
   const [enabledIndicators, setEnabledIndicators] = useState<Record<IndicatorName, boolean>>({
     "EMA 20": true,
@@ -386,6 +390,36 @@ export function Chart({ marketId }: { marketId: string }) {
           nextFundingTime: 0,
         });
         setStatus("live");
+
+        // Seed a fresh aggregator from the reloaded history and restart live ticker
+        aggrRef.current = new CandleAggregator(interval);
+        stopLiveTickRef.current?.();
+        stopLiveTickRef.current = pollLivePrice({
+          marketId,
+          onTick: (price) => {
+            if (disposed) return;
+            const live = aggrRef.current?.tick(price);
+            if (!live) return;
+            candleSeriesRef.current?.update({
+              time: live.time,
+              open: live.open,
+              high: live.high,
+              low: live.low,
+              close: live.close,
+            });
+            volumeSeriesRef.current?.update({
+              time: live.time,
+              value: 0,
+              color: live.close >= live.open ? `${chartColors.bull}80` : `${chartColors.bear}80`,
+            });
+            setLatestCandle((prev) =>
+              prev
+                ? ({ ...prev, time: live.time, open: live.open, high: live.high, low: live.low, close: live.close } as BtcCandle)
+                : (live as BtcCandle),
+            );
+            setStats((prev) => ({ ...prev, mark: live.close, index: live.close }));
+          },
+        });
       } catch {
         if (!disposed && !aborter.signal.aborted) {
           setStatus("offline");
@@ -400,6 +434,8 @@ export function Chart({ marketId }: { marketId: string }) {
       disposed = true;
       aborter.abort();
       window.clearInterval(timer);
+      stopLiveTickRef.current?.();
+      stopLiveTickRef.current = null;
     };
   }, [enabledIndicators, interval, marketId]);
 
