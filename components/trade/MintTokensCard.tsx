@@ -1,78 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { Coins, ExternalLink, RefreshCw } from "lucide-react";
-import { useTokenMint } from "@/hooks/use-token-mint";
+import { useBatchMint, useTokenMint } from "@/hooks/use-token-mint";
 import { useWallet } from "@/hooks/use-wallet";
-import { TOKENS, TOKEN_LIST } from "@/contracts/config";
+import { TOKENS } from "@/contracts/config";
 import WalletConnect from "@/components/features/wallet/wallet-connect";
-import { getExplorerLink, getDefaultChainId } from '@/lib/chain-registry';
+import { getDefaultChainId, getExplorerLink } from "@/lib/chain-registry";
+
+interface TokenMintRowProps {
+  tokenSymbol: string;
+  chainId: number;
+  isMinting: boolean;
+  lastMintedHash?: string;
+  setMinting: Dispatch<SetStateAction<Record<string, boolean>>>;
+  setLastMinted: Dispatch<SetStateAction<Record<string, string>>>;
+}
+
+function TokenMintRow({
+  tokenSymbol,
+  chainId,
+  isMinting,
+  lastMintedHash,
+  setMinting,
+  setLastMinted,
+}: TokenMintRowProps) {
+  const { balance, mint, isLoading, isSuccess, refetchBalance } =
+    useTokenMint(tokenSymbol);
+  const token = TOKENS[tokenSymbol];
+  if (!token) return null;
+
+  const handleMint = async (amount: string) => {
+    setMinting((current) => ({ ...current, [tokenSymbol]: true }));
+    const txHash = await mint(amount);
+    await refetchBalance();
+    setLastMinted((current) => ({ ...current, [tokenSymbol]: txHash || "" }));
+    setMinting((current) => ({ ...current, [tokenSymbol]: false }));
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 hover:bg-secondary/30 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+          {token.symbol.substring(0, 1)}
+        </div>
+        <div>
+          <div className="font-semibold">{token.symbol}</div>
+          <div className="text-xs text-muted-foreground">
+            Balance: {parseFloat(balance).toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {isSuccess && lastMintedHash && (
+          <a
+            href={getExplorerLink(chainId, "tx", lastMintedHash)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-success hover:underline flex items-center gap-1"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+        <button
+          onClick={() => handleMint("1000")}
+          disabled={isLoading || isMinting}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isLoading || isMinting ? (
+            <RefreshCw className="w-3 h-3 animate-spin" />
+          ) : (
+            "Mint 1,000"
+          )}
+        </button>
+        <button
+          onClick={() => handleMint("10000")}
+          disabled={isLoading || isMinting}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isLoading || isMinting ? "..." : "10K"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function MintTokensCard() {
   const { isConnected, chain } = useWallet();
-  const [minting, setMinting] = useState<{ [key: string]: boolean }>({});
-  const [lastMinted, setLastMinted] = useState<{ [key: string]: string }>({});
-
-  const TokenMintRow = ({ tokenSymbol }: { tokenSymbol: string }) => {
-    const { balance, mint, isLoading, isSuccess, hash, refetchBalance } = useTokenMint(tokenSymbol);
-    const token = TOKENS[tokenSymbol];
-    if (!token) return null;
-
-    const handleMint = async (amount: string) => {
-      setMinting({ ...minting, [tokenSymbol]: true });
-      await mint(amount);
-      await refetchBalance();
-      setLastMinted({ ...lastMinted, [tokenSymbol]: hash || '' });
-      setMinting({ ...minting, [tokenSymbol]: false });
-    };
-
-    return (
-      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/20 hover:bg-secondary/30 transition-colors">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
-            {token.symbol.substring(0, 1)}
-          </div>
-          <div>
-            <div className="font-semibold">{token.symbol}</div>
-            <div className="text-xs text-muted-foreground">
-              Balance: {parseFloat(balance).toFixed(2)}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isSuccess && lastMinted[tokenSymbol] && (
-            <a
-              href={getExplorerLink(chain?.id ?? getDefaultChainId(), 'tx', lastMinted[tokenSymbol])}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-success hover:underline flex items-center gap-1"
-            >
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-          <button
-            onClick={() => handleMint('1000')}
-            disabled={isLoading || minting[tokenSymbol]}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading || minting[tokenSymbol] ? (
-              <RefreshCw className="w-3 h-3 animate-spin" />
-            ) : (
-              "Mint 1,000"
-            )}
-          </button>
-          <button
-            onClick={() => handleMint('10000')}
-            disabled={isLoading || minting[tokenSymbol]}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading || minting[tokenSymbol] ? "..." : "10K"}
-          </button>
-        </div>
-      </div>
-    );
-  };
+  const [minting, setMinting] = useState<Record<string, boolean>>({});
+  const [lastMinted, setLastMinted] = useState<Record<string, string>>({});
+  const { mintAll, isLoading: isBatchMinting } = useBatchMint();
+  const chainId = chain?.id ?? getDefaultChainId();
 
   if (!isConnected) {
     return (
@@ -90,10 +109,10 @@ export function MintTokensCard() {
   if (chain?.id !== getDefaultChainId()) {
     return (
       <div className="swap-card w-full max-w-2xl p-8 text-center">
-        <h3 className="text-xl font-semibold mb-4 text-destructive">Wrong Network</h3>
-        <p className="text-muted-foreground">
-          Please switch to Avalanche Mainnet
-        </p>
+        <h3 className="text-xl font-semibold mb-4 text-destructive">
+          Wrong Network
+        </h3>
+        <p className="text-muted-foreground">Please switch to Avalanche Mainnet</p>
       </div>
     );
   }
@@ -117,14 +136,24 @@ export function MintTokensCard() {
           <div className="flex gap-2">
             <div className="text-blue-500 text-2xl">ℹ️</div>
             <div className="text-sm text-blue-500">
-              <strong>Test Tokens Only:</strong> These tokens have no real value and are only for testing purposes on Avalanche Mainnet. You can mint as many as you need!
+              <strong>Test Tokens Only:</strong> These tokens have no real value
+              and are only for testing purposes on Avalanche Mainnet. You can
+              mint as many as you need!
             </div>
           </div>
         </div>
 
         <div className="space-y-2">
           {Object.keys(TOKENS).map((key) => (
-            <TokenMintRow key={key} tokenSymbol={key} />
+            <TokenMintRow
+              key={key}
+              tokenSymbol={key}
+              chainId={chainId}
+              isMinting={!!minting[key]}
+              lastMintedHash={lastMinted[key]}
+              setMinting={setMinting}
+              setLastMinted={setLastMinted}
+            />
           ))}
         </div>
 
@@ -140,22 +169,14 @@ export function MintTokensCard() {
 
         <div className="mt-4 flex gap-2">
           <button
-            onClick={() => {
-              // Mint all tokens sequentially
-              TOKEN_LIST.forEach((token, index) => {
-                setTimeout(() => {
-                  const { mint } = useTokenMint(token.symbol);
-                  mint('1000');
-                }, index * 1000);
-              });
-            }}
-            className="flex-1 py-3 px-4 rounded-xl font-medium bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 transition-opacity"
+            onClick={() => mintAll("1000")}
+            disabled={isBatchMinting}
+            className="flex-1 py-3 px-4 rounded-xl font-medium bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
-            🚀 Mint All Tokens (1K each)
+            {isBatchMinting ? "Minting..." : "🚀 Mint All Tokens (1K each)"}
           </button>
         </div>
       </div>
     </div>
   );
 }
-

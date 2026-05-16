@@ -42,9 +42,9 @@ export function OnboardingHero() {
               {/* Brand Identity Anchor */}
               <div className="flex items-center gap-3">
                 <div className="relative h-8 w-8">
-                  <img src="/logo.png" alt="Omeswap" className="h-full w-full object-contain" />
+                  <img src="/logo.png" alt="Omega" className="h-full w-full object-contain" />
                 </div>
-                <span className="text-lg font-bold tracking-tight text-white">Omeswap</span>
+                <span className="text-lg font-bold tracking-tight text-white">Omega</span>
               </div>
 
               <div className="space-y-6">

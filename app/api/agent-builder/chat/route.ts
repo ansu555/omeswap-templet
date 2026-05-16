@@ -15,7 +15,7 @@ function getOpenAIClient() {
     defaultHeaders: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-      "X-Title": "Omeswap Agent Builder",
+      "X-Title": "Omega Agent Builder",
     },
   });
 }
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       {
         role: "system",
         content: `You are an expert trading bot builder assistant for a DEX (Decentralized Exchange). 
-Help users create automated trading strategies on Omeswap and 0G using visual blocks on a flow canvas.
+Help users create automated trading strategies on Omega and 0G using visual blocks on a flow canvas.
 
 AVAILABLE NODE TYPES (use these exact values for the "type" field):
 DATA SOURCES:
@@ -135,7 +135,7 @@ For a grid strategy: start → price_feed → condition (grid levels) → swap
 
 Respond with helpful explanations and generate appropriate blocks when users ask to create strategies.
 If user asks for a complete strategy, provide 3-6 connected blocks that form a working flow.
-This is an Omeswap DeFi app on 0G — default to W0G/USDC strategies when the user does not specify a pair.`,
+This is an Omega DeFi app on 0G — default to W0G/USDC strategies when the user does not specify a pair.`,
       },
     ];
 

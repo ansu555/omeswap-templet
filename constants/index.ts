@@ -1,6 +1,6 @@
 // Application constants
 
-export const APP_NAME = 'Omeswap';
+export const APP_NAME = 'Omega';
 
 // Chain IDs live in the registry — see lib/chain-registry/index.ts (DEFAULT_CHAIN_ID)
 // and lib/chain-registry/chains/ for per-chain configuration.

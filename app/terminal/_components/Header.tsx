@@ -1,42 +1,34 @@
 "use client";
 
 import Image from "next/image";
-import { Search, ChevronDown } from "lucide-react";
+import Link from "next/link";
 import { WalletConnect } from "@/components/features/wallet";
+import { APP_NAV_ITEMS } from "@/components/layout/nav-items";
+import { NavBar } from "@/components/ui/nav-bar";
 
 export function Header() {
   return (
-    <header className="flex items-center gap-6 px-4 h-14 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="flex items-center gap-2 rounded-full bg-background/5 border border-border backdrop-blur-lg shadow-lg pl-1.5 pr-3 py-1">
+    <header className="flex h-14 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md">
+      <Link
+        href="/"
+        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-background/5 py-1 pl-1.5 pr-3 shadow-lg backdrop-blur-lg"
+      >
         <Image
           src="/logo.png"
-          alt="Omeswap"
+          alt="Omega"
           width={28}
           height={28}
           className="flex-shrink-0 rounded-full"
           priority
         />
-        <span className="text-sm font-semibold text-foreground tracking-tight">Omeswap</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight">Omega</span>
+      </Link>
+      <div className="hidden min-w-0 flex-1 justify-center overflow-hidden md:flex">
+        <NavBar items={APP_NAV_ITEMS} />
       </div>
-      <nav className="flex items-center gap-5 text-sm font-medium">
-        <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
-          Explore <ChevronDown className="h-3.5 w-3.5" />
-        </button>
-        <button className="text-foreground border-b-2 border-primary pb-[18px] -mb-[18px]">Trade</button>
-        <button className="text-muted-foreground hover:text-foreground">Agents</button>
-        <button className="text-muted-foreground hover:text-foreground">Portfolio</button>
-      </nav>
-      <div className="flex-1 max-w-2xl mx-auto">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            placeholder="Search coins, perps, wallets"
-            className="w-full bg-panel border border-border rounded-full pl-9 pr-10 h-9 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">/</span>
-        </div>
+      <div className="ml-auto shrink-0">
+        <WalletConnect />
       </div>
-      <WalletConnect />
     </header>
   );
 }

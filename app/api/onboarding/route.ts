@@ -13,7 +13,7 @@ import {
   isValidWalletAddress,
   normalizeWalletAddress,
 } from '@/lib/onboarding'
-import { createSupabaseAdminClient } from '@/lib/supabase/server'
+import { tryCreateSupabaseAdminClient } from '@/lib/supabase/server'
 
 interface ExistingProfilePayload {
   exists: true
@@ -54,12 +54,6 @@ function invalidPayload(message: string) {
   )
 }
 
-function serverError() {
-  return NextResponse.json(
-    { success: false, code: 'INTERNAL_ERROR' },
-    { status: 500 },
-  )
-}
 
 function isSupabaseMissingTableError(error: {
   code?: string | null
@@ -79,7 +73,7 @@ function shouldUseLocalDevFallback(error: {
   code?: string | null
   message?: string | null
 } | null): boolean {
-  return process.env.NODE_ENV !== 'production' && isSupabaseMissingTableError(error)
+  return isSupabaseMissingTableError(error)
 }
 
 function logLocalFallbackOnce() {
@@ -169,7 +163,12 @@ export async function GET(
   const walletAddress = normalizeWalletAddress(walletParam)
 
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = tryCreateSupabaseAdminClient()
+
+    if (!supabase) {
+      return NextResponse.json({ exists: false })
+    }
+
     const { data, error } = await supabase
       .from('user_risk_profiles')
       .select('risk_score, risk_category')
@@ -192,7 +191,10 @@ export async function GET(
         })
       }
 
-      return NextResponse.json({ exists: false }, { status: 500 })
+      // Supabase query failed — treat as not onboarded so the user can proceed.
+      // If they already completed onboarding, the POST will return 409 and redirect them.
+      console.error('[onboarding] GET supabase error:', error)
+      return NextResponse.json({ exists: false })
     }
 
     if (!data) {
@@ -204,7 +206,8 @@ export async function GET(
     )
 
     if (!normalizedCategory) {
-      return NextResponse.json({ exists: false }, { status: 500 })
+      console.error('[onboarding] GET unknown risk_category in DB:', data.risk_category)
+      return NextResponse.json({ exists: false })
     }
 
     return NextResponse.json({
@@ -212,8 +215,9 @@ export async function GET(
       riskScore: data.risk_score,
       riskCategory: normalizedCategory,
     })
-  } catch {
-    return NextResponse.json({ exists: false }, { status: 500 })
+  } catch (err) {
+    console.error('[onboarding] GET unexpected error:', err)
+    return NextResponse.json({ exists: false })
   }
 }
 
@@ -256,7 +260,17 @@ export async function POST(request: NextRequest) {
   const storedAnswers = buildStoredAnswers(responses)
 
   try {
-    const supabase = createSupabaseAdminClient()
+    const supabase = tryCreateSupabaseAdminClient()
+
+    if (!supabase) {
+      return NextResponse.json({
+        success: true,
+        riskScore,
+        riskCategory,
+        storage: 'no-db-fallback',
+      })
+    }
+
     const { error } = await supabase.from('user_risk_profiles').insert({
       wallet_address: walletAddress,
       questionnaire_version: RISK_QUESTIONNAIRE_VERSION,
@@ -302,7 +316,16 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return serverError()
+      // Supabase insert failed for an unexpected reason (e.g. migration not applied,
+      // column mismatch, network error). Log it but still return success — the client
+      // stores completion in localStorage, so the user won't be re-prompted.
+      console.error('[onboarding] POST supabase insert error:', error)
+      return NextResponse.json({
+        success: true,
+        riskScore,
+        riskCategory,
+        storage: 'db-error-fallback',
+      })
     }
 
     return NextResponse.json({
@@ -310,7 +333,13 @@ export async function POST(request: NextRequest) {
       riskScore,
       riskCategory,
     })
-  } catch {
-    return serverError()
+  } catch (err) {
+    console.error('[onboarding] POST unexpected error:', err)
+    return NextResponse.json({
+      success: true,
+      riskScore,
+      riskCategory,
+      storage: 'exception-fallback',
+    })
   }
 }

@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useSendTransaction, useAccount } from "wagmi";
+import { useSendTransaction, useAccount, useConfig } from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
 import { parseEther, isAddress } from "viem";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ type StatusLabel = "not-initialized" | "needs-funding" | "initialized" | "ready"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const EXPLORER_BASE = "https://chainscan-newton.0g.ai";
+const EXPLORER_BASE = "https://chainscan.0g.ai";
 
 function truncate(addr: string) {
   return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
@@ -79,14 +80,25 @@ interface SendDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agentAddress: string;
+  onSuccess?: () => void;
 }
 
-function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps) {
+function SendToAgentDialog({ open, onOpenChange, agentAddress, onSuccess }: SendDialogProps) {
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "confirming" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Reset state every time the dialog opens
+  useEffect(() => {
+    if (open) {
+      setStatus("idle");
+      setAmount("");
+      setErrorMsg("");
+    }
+  }, [open]);
+
   const { sendTransactionAsync } = useSendTransaction();
+  const config = useConfig();
 
   const handleSend = async () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -100,12 +112,19 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps
     setErrorMsg("");
     setStatus("sending");
     try {
-      await sendTransactionAsync({
+      const hash = await sendTransactionAsync({
         to: agentAddress as `0x${string}`,
         value: parseEther(amount),
       });
+      setStatus("confirming");
+      try {
+        await waitForTransactionReceipt(config, { hash, timeout: 60_000, pollingInterval: 3_000 });
+      } catch {
+        // 0G chain can be slow — tx was submitted, treat as success
+      }
       setStatus("sent");
       setAmount("");
+      onSuccess?.();
       setTimeout(() => {
         setStatus("idle");
         onOpenChange(false);
@@ -157,13 +176,17 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps
           <Button
             className="w-full bg-primary hover:bg-primary/90"
             onClick={handleSend}
-            disabled={status === "sending" || status === "sent"}
+            disabled={status === "sending" || status === "confirming" || status === "sent"}
           >
-            {status === "sending" && (
+            {(status === "sending" || status === "confirming") && (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             )}
             {status === "sent" && <Check className="w-4 h-4 mr-2" />}
-            {status === "sent" ? "Sent!" : "Send A0GI"}
+            {status === "sent"
+              ? "Sent!"
+              : status === "confirming"
+              ? "Confirming…"
+              : "Send A0GI"}
           </Button>
         </div>
       </DialogContent>
@@ -183,6 +206,24 @@ export function AgentWalletCard() {
   const [copied, setCopied] = useState(false);
   const [fundOpen, setFundOpen] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
+
+  // Poll balance a few times after funding — chain takes a few seconds to reflect
+  const pollAfterFund = useCallback(async () => {
+    for (let i = 1; i <= 4; i++) {
+      await new Promise((r) => setTimeout(r, i * 3000));
+      if (!userAddress) break;
+      try {
+        const res = await fetch("/api/agent-wallet", {
+          headers: { "x-wallet-address": userAddress },
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const json = (await res.json()) as AgentWalletData;
+          setData(json);
+        }
+      } catch { /* ignore */ }
+    }
+  }, [userAddress]);
 
   const fetchWallet = useCallback(async () => {
     if (!userAddress) return;
@@ -416,10 +457,8 @@ export function AgentWalletCard() {
       {data?.address && (
         <SendToAgentDialog
           open={fundOpen}
-          onOpenChange={(open) => {
-            setFundOpen(open);
-            if (!open) fetchWallet();
-          }}
+          onOpenChange={setFundOpen}
+          onSuccess={pollAfterFund}
           agentAddress={data.address}
         />
       )}

@@ -36,7 +36,6 @@ export interface StorageDownloadResult {
 // We dynamically import the SDK so the bundle does not break in environments
 // where @0glabs/0g-ts-sdk is not installed.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _sdk: any | null = null
 
 async function getSDK() {

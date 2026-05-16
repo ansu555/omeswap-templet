@@ -17,8 +17,8 @@ import {
 
 export function AddLiquidityCard() {
   const { isConnected, chain } = useWallet();
-  const [token0Symbol, setToken0Symbol] = useState<string>('USDC');
-  const [token1Symbol, setToken1Symbol] = useState<string>('USDTe');
+  const [token0Symbol, setToken0Symbol] = useState<string>('W0G');
+  const [token1Symbol, setToken1Symbol] = useState<string>('USDC');
 
   const {
     amount0,
@@ -87,7 +87,7 @@ export function AddLiquidityCard() {
       <div className="swap-card w-full max-w-md p-8 text-center">
         <h3 className="text-xl font-semibold mb-4 text-destructive">Wrong Network</h3>
         <p className="text-muted-foreground mb-6">
-          Please switch to Avalanche Mainnet
+          Please switch to 0G Mainnet
         </p>
       </div>
     );

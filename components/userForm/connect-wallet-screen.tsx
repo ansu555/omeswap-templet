@@ -17,7 +17,7 @@ export function ConnectWalletScreen() {
           </div>
 
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">
-            Omeswap Onboarding
+            Omega Onboarding
           </p>
 
           <h1 className="text-2xl font-bold text-foreground mb-3">

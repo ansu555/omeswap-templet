@@ -57,7 +57,6 @@ function getMasterKey(): Buffer {
  *   // store enc.ct, enc.iv, enc.tag in Supabase
  */
 export function encrypt(plaintext: string): EncryptedSecret {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require('crypto') as typeof import('crypto')
 
   const key = getMasterKey()
@@ -86,7 +85,6 @@ export function encrypt(plaintext: string): EncryptedSecret {
  *   const privateKey = decrypt({ ct, iv, tag })
  */
 export function decrypt({ ct, iv, tag }: EncryptedSecret): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require('crypto') as typeof import('crypto')
 
   const key = getMasterKey()

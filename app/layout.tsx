@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Omeswap",
-  description: "The next-generation decentralized exchange on Avalanche",
+  title: "Omega",
+  description: "The next-generation decentralized exchange on 0G",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

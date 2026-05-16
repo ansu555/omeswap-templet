@@ -162,7 +162,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: 'tpl_dca',
     name: 'DCA Bot',
-    description: 'Swaps a fixed USDC amount to W0G every hour on Omeswap/Jaine — no conditions, pure dollar-cost averaging.',
+    description: 'Swaps a fixed USDC amount to W0G every hour on Omega/Jaine — no conditions, pure dollar-cost averaging.',
     tags: ['trading', 'swap', '0g', 'dca'],
     nodes: [
       {

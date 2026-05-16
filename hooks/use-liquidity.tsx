@@ -8,6 +8,7 @@ import {
   useWaitForTransactionReceipt,
   useChainId,
 } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseEther, formatEther, Address } from "viem";
 import { TOKENS } from "@/contracts/config";
 import { MultiTokenLiquidityPoolsABI, ERC20ABI } from "@/contracts/abis";
@@ -17,6 +18,7 @@ import { useTransactionStore } from "@/store/transaction-store";
 export function useLiquidity(token0Symbol: string, token1Symbol: string) {
   const { address } = useAccount();
   const connectedChainId = useChainId();
+  const queryClient = useQueryClient();
 
   const chainConfig = (() => {
     try { return getChainConfig(connectedChainId) }
@@ -316,6 +318,9 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
       refetchAllowance1();
       refetchPoolInfo();
       refetchPosition();
+      // Invalidate all wagmi read queries so sibling components (e.g. PoolComparisonPanel)
+      // also pick up the updated on-chain state immediately.
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
     }
   }, [
     isSuccess,
@@ -325,6 +330,7 @@ export function useLiquidity(token0Symbol: string, token1Symbol: string) {
     refetchAllowance1,
     refetchPoolInfo,
     refetchPosition,
+    queryClient,
   ]);
 
   return {

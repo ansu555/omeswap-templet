@@ -54,7 +54,7 @@ export const DEX_MARKETS: DexMarketConfig[] = [
     },
     leverage: null,
     color: "bg-violet-500",
-    executionVenue: "Jaine Hub",
+    executionVenue: "Jaine",
     fallback: {
       priceUsd: 0.531342,
       change24h: 0.153,

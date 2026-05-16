@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   ListFilter,
 } from "lucide-react";
 import {
@@ -27,6 +26,8 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { DexCandle, DexMarket, DexTrade } from "@/lib/dex/types";
+import { pollLivePrice } from "@/lib/terminal/data/livePriceTick";
+import { CandleAggregator } from "@/lib/terminal/data/candleAggregator";
 
 type BtcCandle = CandlestickData<UTCTimestamp> & {
   volume: number;
@@ -101,6 +102,8 @@ export function Chart({ marketId }: { marketId: string }) {
   const macdSignalRef = useRef<ISeriesApi<"Line"> | null>(null);
   const macdHistogramRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const candlesRef = useRef<BtcCandle[]>([]);
+  const aggrRef = useRef<CandleAggregator | null>(null);
+  const stopLiveTickRef = useRef<(() => void) | null>(null);
   const [interval, setInterval] = useState<ChartInterval>("1m");
   const [enabledIndicators, setEnabledIndicators] = useState<Record<IndicatorName, boolean>>({
     "EMA 20": true,
@@ -387,6 +390,36 @@ export function Chart({ marketId }: { marketId: string }) {
           nextFundingTime: 0,
         });
         setStatus("live");
+
+        // Seed a fresh aggregator from the reloaded history and restart live ticker
+        aggrRef.current = new CandleAggregator(interval);
+        stopLiveTickRef.current?.();
+        stopLiveTickRef.current = pollLivePrice({
+          marketId,
+          onTick: (price) => {
+            if (disposed) return;
+            const live = aggrRef.current?.tick(price);
+            if (!live) return;
+            candleSeriesRef.current?.update({
+              time: live.time,
+              open: live.open,
+              high: live.high,
+              low: live.low,
+              close: live.close,
+            });
+            volumeSeriesRef.current?.update({
+              time: live.time,
+              value: 0,
+              color: live.close >= live.open ? `${chartColors.bull}80` : `${chartColors.bear}80`,
+            });
+            setLatestCandle((prev) =>
+              prev
+                ? ({ ...prev, time: live.time, open: live.open, high: live.high, low: live.low, close: live.close } as BtcCandle)
+                : (live as BtcCandle),
+            );
+            setStats((prev) => ({ ...prev, mark: live.close, index: live.close }));
+          },
+        });
       } catch {
         if (!disposed && !aborter.signal.aborted) {
           setStatus("offline");
@@ -401,6 +434,8 @@ export function Chart({ marketId }: { marketId: string }) {
       disposed = true;
       aborter.abort();
       window.clearInterval(timer);
+      stopLiveTickRef.current?.();
+      stopLiveTickRef.current = null;
     };
   }, [enabledIndicators, interval, marketId]);
 
@@ -556,9 +591,6 @@ export function Chart({ marketId }: { marketId: string }) {
           </div>
         </div>
 
-        <button className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-3 bg-primary/30 rounded-r flex items-center justify-center">
-          <ChevronRight className="h-3 w-3 text-primary" />
-        </button>
       </div>
 
       <div className="flex items-center gap-3 px-3 h-10 border-t border-border text-xs text-muted-foreground">

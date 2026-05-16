@@ -8,7 +8,7 @@ type MarketsResponse = {
   markets: DexMarket[];
 };
 
-type MarketTab = "Coins" | "Perps" | "Follows";
+type MarketTab = "Coins";
 
 export function TokenList({
   activeMarketId,
@@ -54,34 +54,30 @@ export function TokenList({
   }, []);
 
   const totalVolume = useMemo(
-    () =>
-      markets
-        .filter((market) => (activeTab === "Perps" ? market.kind === "perp" : market.kind === "spot"))
-        .reduce((sum, market) => sum + market.volume24hUsd, 0),
-    [activeTab, markets],
+    () => markets.filter((m) => m.network === "0g" && m.kind === "spot").reduce((sum, m) => sum + m.volume24hUsd, 0),
+    [markets],
   );
   const visibleMarkets = useMemo(() => {
-    if (activeTab === "Perps") return markets.filter((market) => market.kind === "perp");
-    if (activeTab === "Follows") return markets.filter((market) => market.id === activeMarketId);
-    return markets.filter((market) => market.kind === "spot");
-  }, [activeMarketId, activeTab, markets]);
-  const sectionLabel = activeTab === "Perps" ? "Perp markets" : activeTab === "Follows" ? "Followed markets" : "Spot markets";
-  const footerLabel = activeTab === "Perps" ? "24h perp volume" : "24h spot volume";
+    return markets.filter((market) => market.network === "0g" && market.kind === "spot");
+  }, [markets]);
+  const sectionLabel = "0G Spot markets";
+  const footerLabel = "24h spot volume";
 
   return (
     <aside className="w-[300px] shrink-0 border-r border-border bg-background flex flex-col">
       <div className="grid grid-cols-3 text-sm border-b border-border">
-        {(["Coins", "Perps", "Follows"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`py-3 font-medium ${
-              activeTab === tab ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        <button
+          onClick={() => setActiveTab("Coins")}
+          className={`py-3 font-medium ${activeTab === "Coins" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Coins
+        </button>
+        <button disabled className="py-3 font-medium text-muted-foreground/40 cursor-not-allowed">
+          Perps
+        </button>
+        <button disabled className="py-3 font-medium text-muted-foreground/40 cursor-not-allowed">
+          Follows
+        </button>
       </div>
       <div className="flex items-center justify-between px-3 py-2 border-b border-border text-[11px] text-muted-foreground">
         <span>{sectionLabel}</span>

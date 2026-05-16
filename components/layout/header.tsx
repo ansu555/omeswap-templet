@@ -3,21 +3,10 @@
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "./logo";
-import { Compass, Wallet, Receipt, Bot, Store, Library, FlaskConical, Cpu } from "lucide-react";
 import { gsap } from "gsap";
 import { WalletConnect } from "@/components/features/wallet";
 import { NavBar } from "@/components/ui/nav-bar";
-
-const navItems = [
-  { name: "Explore", url: "/explore", icon: Compass },
-  { name: "Terminal", url: "/terminal", icon: FlaskConical },
-  { name: "Research", url: "/research", icon: Bot },
-  { name: "Portfolio", url: "/portfolio", icon: Wallet },
-  { name: "Marketplace", url: "/marketplace", icon: Store },
-  { name: "Library", url: "/library", icon: Library },
-  { name: "Txns", url: "/transactions", icon: Receipt },
-  { name: "Builder", url: "/agent-builder", icon: Cpu },
-];
+import { APP_NAV_ITEMS } from "@/components/layout/nav-items";
 
 export const Header = () => {
   const logoRef = useRef<HTMLAnchorElement>(null);
@@ -50,7 +39,7 @@ export const Header = () => {
 
           {/* Center Navigation */}
           <div className="hidden md:flex flex-1 justify-center min-w-0 overflow-hidden">
-            <NavBar items={navItems} />
+            <NavBar items={APP_NAV_ITEMS} />
           </div>
 
           {/* Right Section - Connect Wallet */}
@@ -68,7 +57,7 @@ export const Header = () => {
 
       {/* Mobile Bottom NavBar */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 mb-6 md:hidden">
-        <NavBar items={navItems} />
+        <NavBar items={APP_NAV_ITEMS} />
       </div>
     </header>
   );

@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpDown, ExternalLink } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useTerminalStore } from "@/store/terminal";
 
 type Side = "buy" | "sell";
-const HUB_SWAP_URL = "https://hub.0g.ai/swap";
 
 export function OrderPanelTile() {
   const activeSymbol = useTerminalStore((s) => s.activeSymbol);
@@ -81,9 +80,7 @@ export function OrderPanelTile() {
         </div>
 
         <Link
-          href={HUB_SWAP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/trade"
           onMouseDown={(e) => e.stopPropagation()}
           className={cn(
             "mt-auto flex items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold uppercase transition-colors",
@@ -92,8 +89,7 @@ export function OrderPanelTile() {
               : "bg-red-500/80 text-white hover:bg-red-500",
           )}
         >
-          Open 0G Hub Swap
-          <ExternalLink size={12} />
+          {side === "buy" ? "Buy" : "Sell"} W0G
         </Link>
       </div>
     </div>

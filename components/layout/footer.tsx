@@ -29,7 +29,7 @@ const exploreLinks = [
   {
     icon: Users,
     title: 'Community',
-    description: 'Follow OmeSwap on X, Discord, and Telegram',
+    description: 'Follow Omega on X, Discord, and Telegram',
     href: '#',
     external: false,
     socialLinks: [
@@ -93,7 +93,7 @@ export function Footer() {
       {/* Explore Section */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
         <h2 className="text-4xl md:text-5xl font-light text-foreground mb-12">
-          Explore the <span className="font-semibold">OmeSwap agent stack</span>
+          Explore the <span className="font-semibold">Omega agent stack</span>
         </h2>
 
         <div className="space-y-0">
@@ -112,7 +112,7 @@ export function Footer() {
                   <p className="text-muted-foreground text-sm md:text-base max-w-xl">
                     {link.socialLinks ? (
                       <>
-                        Follow OmeSwap on{' '}
+                        Follow Omega on{' '}
                         {link.socialLinks.map((social, idx) => (
                           <span key={social.name}>
                             <span className="text-foreground hover:underline">
@@ -195,8 +195,8 @@ export function Footer() {
         <div className="border-t border-border/30">
           <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Image src="/logo.png" alt="OmeSwap" width={20} height={20} />
-              <span>&copy; {new Date().getFullYear()} - OmeSwap</span>
+              <Image src="/logo.png" alt="Omega" width={20} height={20} />
+              <span>&copy; {new Date().getFullYear()} - Omega</span>
             </div>
             <div className="flex items-center gap-6">
               <Link

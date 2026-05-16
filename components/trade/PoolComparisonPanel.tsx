@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Droplets, ExternalLink, Layers } from "lucide-react";
+import { Activity, Droplets, ExternalLink, Layers, Plus } from "lucide-react";
 import { useReadContract } from "wagmi";
 import { Address, formatUnits } from "viem";
 import { MultiTokenLiquidityPoolsABI } from "@/contracts/abis";
@@ -60,6 +60,7 @@ export function PoolComparisonPanel() {
     chainId: getDefaultChainId(),
     query: {
       enabled: isOmeSwapConfigured,
+      refetchInterval: REFRESH_MS,
     },
   });
 
@@ -71,6 +72,7 @@ export function PoolComparisonPanel() {
     chainId: getDefaultChainId(),
     query: {
       enabled: isOmeSwapConfigured && poolId != null,
+      refetchInterval: REFRESH_MS,
     },
   });
 
@@ -124,7 +126,7 @@ export function PoolComparisonPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Pool Details</h3>
-          <p className="text-sm text-muted-foreground">Jaine Hub vs OmeSwap</p>
+          <p className="text-sm text-muted-foreground">Jaine vs Omega</p>
         </div>
         <span className="text-[11px] px-2 py-1 rounded-full border border-primary/30 text-primary">
           0G
@@ -181,6 +183,16 @@ export function PoolComparisonPanel() {
                 <span className="font-mono">{shortAddress(jaineMarket.poolAddress)}</span>
               )}
             </div>
+            <a
+              href="https://jaine.app/pools"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-primary/30 text-xs text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Provide LP on Jaine
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </>
         ) : (
           <p className="text-sm text-muted-foreground">{marketError ?? "No Jaine pool data yet."}</p>
@@ -190,12 +202,12 @@ export function PoolComparisonPanel() {
       <div className="rounded-xl border border-border/70 bg-muted/25 p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Droplets className="w-4 h-4 text-primary" />
-          <span>Your OmeSwap Pool</span>
+          <span>Your Omega Pool</span>
         </div>
 
         {!isOmeSwapConfigured ? (
           <p className="text-sm text-muted-foreground">
-            OmeSwap pool contract is not deployed on this network yet.
+            Omega pool contract is not deployed on this network yet.
           </p>
         ) : (
           <>
