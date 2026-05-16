@@ -59,6 +59,7 @@ CREATE TRIGGER trg_user_settings_updated_at
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
 -- Users may read their own settings (the server sets app.wallet via SET LOCAL)
+DROP POLICY IF EXISTS "user_settings: owner read" ON public.user_settings;
 CREATE POLICY "user_settings: owner read"
   ON public.user_settings FOR SELECT
   USING (user_wallet = lower(current_setting('app.wallet', true)));
