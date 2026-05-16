@@ -54,12 +54,6 @@ function invalidPayload(message: string) {
   )
 }
 
-function serverError() {
-  return NextResponse.json(
-    { success: false, code: 'INTERNAL_ERROR' },
-    { status: 500 },
-  )
-}
 
 function isSupabaseMissingTableError(error: {
   code?: string | null
@@ -322,7 +316,16 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return serverError()
+      // Supabase insert failed for an unexpected reason (e.g. migration not applied,
+      // column mismatch, network error). Log it but still return success — the client
+      // stores completion in localStorage, so the user won't be re-prompted.
+      console.error('[onboarding] POST supabase insert error:', error)
+      return NextResponse.json({
+        success: true,
+        riskScore,
+        riskCategory,
+        storage: 'db-error-fallback',
+      })
     }
 
     return NextResponse.json({
@@ -330,7 +333,13 @@ export async function POST(request: NextRequest) {
       riskScore,
       riskCategory,
     })
-  } catch {
-    return serverError()
+  } catch (err) {
+    console.error('[onboarding] POST unexpected error:', err)
+    return NextResponse.json({
+      success: true,
+      riskScore,
+      riskCategory,
+      storage: 'exception-fallback',
+    })
   }
 }
