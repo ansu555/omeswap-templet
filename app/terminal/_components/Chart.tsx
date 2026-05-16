@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   ListFilter,
 } from "lucide-react";
 import {
@@ -556,9 +555,6 @@ export function Chart({ marketId }: { marketId: string }) {
           </div>
         </div>
 
-        <button className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-3 bg-primary/30 rounded-r flex items-center justify-center">
-          <ChevronRight className="h-3 w-3 text-primary" />
-        </button>
       </div>
 
       <div className="flex items-center gap-3 px-3 h-10 border-t border-border text-xs text-muted-foreground">
