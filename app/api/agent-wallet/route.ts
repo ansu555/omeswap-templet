@@ -29,12 +29,10 @@ export async function GET(req: NextRequest) {
     const agentAddress = await getAgentAddress(userWallet)
 
     if (!agentAddress) {
-      return NextResponse.json({
-        isInitialized: false,
-        address: null,
-        balance: null,
-        chainId,
-      })
+      return NextResponse.json(
+        { isInitialized: false, address: null, balance: null, chainId },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
     }
 
     const chainConfig = getChainConfig(chainId)
@@ -47,12 +45,15 @@ export async function GET(req: NextRequest) {
       address: agentAddress as `0x${string}`,
     })
 
-    return NextResponse.json({
-      isInitialized: true,
-      address: agentAddress,
-      balance: formatEther(rawBalance),
-      chainId,
-    })
+    return NextResponse.json(
+      {
+        isInitialized: true,
+        address: agentAddress,
+        balance: formatEther(rawBalance),
+        chainId,
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (e) {
     return jsonError(e)
   }

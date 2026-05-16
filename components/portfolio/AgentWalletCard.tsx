@@ -231,6 +231,7 @@ export function AgentWalletCard() {
     try {
       const res = await fetch("/api/agent-wallet", {
         headers: { "x-wallet-address": userAddress },
+        cache: "no-store",
       });
       if (res.ok) {
         const json = (await res.json()) as AgentWalletData;
