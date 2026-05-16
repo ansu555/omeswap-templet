@@ -130,7 +130,7 @@ function CollapsiblePanel({
           type="button"
           aria-label={collapseLabel}
           aria-controls={panelId}
-          aria-expanded
+          aria-expanded={true}
           onClick={onToggle}
           className={`absolute top-1/2 z-20 flex h-8 w-4 -translate-y-1/2 items-center justify-center border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
             railPosition === "leading" ? "-left-2 rounded-r-md border-l-0" : "-right-2 rounded-l-md border-r-0"
