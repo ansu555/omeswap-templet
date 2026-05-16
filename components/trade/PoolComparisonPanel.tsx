@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Droplets, ExternalLink, Layers } from "lucide-react";
+import { Activity, Droplets, ExternalLink, Layers, Plus } from "lucide-react";
 import { useReadContract } from "wagmi";
 import { Address, formatUnits } from "viem";
 import { MultiTokenLiquidityPoolsABI } from "@/contracts/abis";
@@ -181,6 +181,16 @@ export function PoolComparisonPanel() {
                 <span className="font-mono">{shortAddress(jaineMarket.poolAddress)}</span>
               )}
             </div>
+            <a
+              href="https://jaine.app/pools"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-primary/30 text-xs text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Provide LP on Jaine
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </>
         ) : (
           <p className="text-sm text-muted-foreground">{marketError ?? "No Jaine pool data yet."}</p>

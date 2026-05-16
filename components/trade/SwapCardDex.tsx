@@ -20,7 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getExplorerLink, getDexRouters, getDefaultChainId, getChainConfig } from "@/lib/chain-registry";
-import { JAINE_DEX_ID, JAINE_DEX_NAME, JAINE_SWAP_URL } from "@/lib/dex/jaine";
+import { JAINE_DEX_ID } from "@/lib/dex/jaine";
 
 type SwapMode = "swap" | "limit" | "buy" | "sell";
 
@@ -45,8 +45,8 @@ export function SwapCardDex() {
   const { isConnected, chain, address, switchChain } = useWallet();
 
   const [mode, setMode] = useState<SwapMode>("swap");
-  const [tokenIn, setTokenIn] = useState<string>("W0G");
-  const [tokenOut, setTokenOut] = useState<string>("USDC");
+  const [tokenIn, setTokenIn] = useState<string>("OmE");
+  const [tokenOut, setTokenOut] = useState<string>("USDO");
   const [amountIn, setAmountIn] = useState<string>("");
   const [slippage, setSlippage] = useState<number>(0.5);
   const [isPayTokenOpen, setIsPayTokenOpen] = useState(false);
@@ -60,7 +60,6 @@ export function SwapCardDex() {
     setSelectedDex,
     estimatedOutput,
     balance,
-    hasConfiguredRouters,
     needsApproval,
     executeSwap,
     isApproving,
@@ -74,20 +73,6 @@ export function SwapCardDex() {
   // tokenIn/tokenOut are object keys in TOKEN_ADDRESSES (e.g. "W0G", "USDC")
   const payToken = TOKEN_ADDRESSES[tokenIn] ?? TOKEN_LIST[0];
   const receiveToken = TOKEN_ADDRESSES[tokenOut] ?? TOKEN_LIST[1];
-  const selectedDexLabel = DEX_LABELS[selectedDex] ?? { name: JAINE_DEX_NAME, color: "text-primary" };
-  const isSuggestedPair =
-    (tokenIn === "W0G" && tokenOut === "USDC") ||
-    (tokenIn === "USDC" && tokenOut === "W0G");
-
-  const openJaineSwap = () => {
-    window.open(JAINE_SWAP_URL, "_blank", "noopener,noreferrer");
-  };
-
-  const setSuggestedPair = () => {
-    setTokenIn("W0G");
-    setTokenOut("USDC");
-    setAmountIn("");
-  };
 
   const handleSwapDirection = () => {
     setTokenIn(tokenOut);
@@ -143,6 +128,7 @@ export function SwapCardDex() {
         </div>
         <div className="grid gap-1 max-h-96 overflow-y-auto">
           {Object.entries(TOKEN_ADDRESSES)
+            .filter(([key]) => ['W0G', 'USDC', 'OmE', 'USDO'].includes(key))
             .sort(([keyA], [keyB]) => {
               // Sort tokens with non-zero balance to the top
               const balA = parseFloat(walletBalances[keyA] ?? '0');
@@ -349,30 +335,8 @@ export function SwapCardDex() {
             {isLoadingQuotes ? (
               <div className="text-xs text-muted-foreground animate-pulse">Fetching quotes...</div>
             ) : quotes.length === 0 ? (
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  {hasConfiguredRouters
-                    ? "No liquidity found for this pair."
-                    : "Jaine in-app swaps currently support W0G / USDC.e on 0G."}
-                </div>
-
-                {!hasConfiguredRouters ? (
-                  <a
-                    href={JAINE_SWAP_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    Open Jaine
-                  </a>
-                ) : !isSuggestedPair ? (
-                  <button
-                    onClick={setSuggestedPair}
-                    className="inline-flex text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    Try W0G / USDC.e
-                  </button>
-                ) : null}
+              <div className="text-xs text-muted-foreground">
+                No liquidity found for this pair.
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -432,31 +396,23 @@ export function SwapCardDex() {
 
         {/* Action Button */}
         <button
-          onClick={() => {
-            if (!hasConfiguredRouters) {
-              openJaineSwap();
-              return;
-            }
-            if (isValidSwap && !isLoading) executeSwap();
-          }}
-          disabled={hasConfiguredRouters ? !isValidSwap || isLoading : false}
+          onClick={() => { if (isValidSwap && !isLoading) executeSwap(); }}
+          disabled={!isValidSwap || isLoading}
           className="swap-action-btn mt-4"
         >
           {isLoading
             ? isApproving
               ? `Approving ${payToken.symbol}...`
               : 'Swapping...'
-            : !hasConfiguredRouters
-              ? "Open Jaine"
-              : !hasValidAmount
+            : !hasValidAmount
               ? 'Enter Amount'
               : !hasSufficientBalance
                 ? 'Insufficient Balance'
                 : !hasQuote
                   ? 'No Liquidity'
                   : needsApproval
-                    ? `Approve ${payToken.symbol} on ${selectedDexLabel.name}`
-                    : `Swap via ${selectedDexLabel.name}`}
+                    ? `Approve ${payToken.symbol}`
+                    : `Swap`}
         </button>
 
         {/* Success */}

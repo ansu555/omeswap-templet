@@ -180,9 +180,21 @@ export const zeroGConfig: ChainConfig = {
       decimals: 8,
       coingeckoId: "bitcoin",
     },
+    // OmeSwap native tokens — addresses updated after deployTokens.js
+    OmE: {
+      address: "0x87E3FC6944FAe11FEfd71d61003f42C6d1b445BF" as Address,
+      name: "OmE Token",
+      symbol: "OmE",
+      decimals: 18,
+    },
+    USDO: {
+      address: "0x4c95c850D6C89775791B801fDc7ED739702a8811" as Address,
+      name: "OmeSwap USD",
+      symbol: "USDO",
+      decimals: 6,
+    },
   },
 
-  // TODO: Deploy OmeSwap contracts on 0G and update these addresses.
-  omeswapPools: "0x0000000000000000000000000000000000000000" as Address,
-  omeswapRouter: "0x0000000000000000000000000000000000000000" as Address,
+  omeswapPools: "0xbbC3958B39958ca4a60d06cB62EB2DE7CE5380C0" as Address,
+  omeswapRouter: "0x42a2F8580211654109Bb6e972898FA41e7511918" as Address,
 };

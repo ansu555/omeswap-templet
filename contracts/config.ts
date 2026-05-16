@@ -45,6 +45,8 @@ export const TOKEN_ADDRESSES: { [key: string]: { address: Address; name: string;
   USDT: _rt.USDT ?? { address: '0x0000000000000000000000000000000000000003' as Address, name: 'Tether USD', symbol: 'USDT', decimals: 6 },
   WETH: _rt.WETH ?? { address: '0x0000000000000000000000000000000000000004' as Address, name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
   WBTC: _rt.WBTC ?? { address: '0x0000000000000000000000000000000000000005' as Address, name: 'Wrapped Bitcoin', symbol: 'WBTC', decimals: 8 },
+  OmE:  _rt.OmE  ?? { address: '0x87E3FC6944FAe11FEfd71d61003f42C6d1b445BF' as Address, name: 'OmE Token', symbol: 'OmE', decimals: 18 },
+  USDO: _rt.USDO ?? { address: '0x4c95c850D6C89775791B801fDc7ED739702a8811' as Address, name: 'OmeSwap USD', symbol: 'USDO', decimals: 6 },
   // Legacy aliases for hooks/components that use old Avalanche key names
   WAVAX:    _rt.W0G  ?? { address: '0x0000000000000000000000000000000000000001' as Address, name: 'Wrapped 0G', symbol: 'W0G', decimals: 18 },
   WETHe:    _rt.WETH ?? { address: '0x0000000000000000000000000000000000000004' as Address, name: 'Wrapped Ether', symbol: 'WETH', decimals: 18 },
