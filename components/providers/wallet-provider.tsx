@@ -2,7 +2,7 @@
 
 import { useState, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, createStorage, cookieStorage } from "wagmi";
+import { WagmiProvider, createStorage, cookieStorage, http } from "wagmi";
 import {
   getDefaultConfig,
   RainbowKitProvider,
@@ -34,10 +34,14 @@ export function WalletProvider({
   const [queryClient] = useState(() => new QueryClient());
   const [config] = useState(() => {
     const supportedChains = getSupportedChains().map(c => c.chain) as [Chain, ...Chain[]];
+    const transports = Object.fromEntries(
+      supportedChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])]),
+    );
     return getDefaultConfig({
       appName: "Omega",
       projectId: walletConnectProjectId || "walletconnect-disabled",
       chains: supportedChains,
+      transports,
       wallets: [
         {
           groupName: "Recommended",

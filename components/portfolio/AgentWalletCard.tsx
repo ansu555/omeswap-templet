@@ -80,12 +80,22 @@ interface SendDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agentAddress: string;
+  onSuccess?: () => void;
 }
 
-function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps) {
+function SendToAgentDialog({ open, onOpenChange, agentAddress, onSuccess }: SendDialogProps) {
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "confirming" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Reset state every time the dialog opens
+  useEffect(() => {
+    if (open) {
+      setStatus("idle");
+      setAmount("");
+      setErrorMsg("");
+    }
+  }, [open]);
 
   const { sendTransactionAsync } = useSendTransaction();
   const config = useConfig();
@@ -114,6 +124,7 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps
       }
       setStatus("sent");
       setAmount("");
+      onSuccess?.();
       setTimeout(() => {
         setStatus("idle");
         onOpenChange(false);
@@ -195,6 +206,24 @@ export function AgentWalletCard() {
   const [copied, setCopied] = useState(false);
   const [fundOpen, setFundOpen] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
+
+  // Poll balance a few times after funding — chain takes a few seconds to reflect
+  const pollAfterFund = useCallback(async () => {
+    for (let i = 1; i <= 4; i++) {
+      await new Promise((r) => setTimeout(r, i * 3000));
+      if (!userAddress) break;
+      try {
+        const res = await fetch("/api/agent-wallet", {
+          headers: { "x-wallet-address": userAddress },
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const json = (await res.json()) as AgentWalletData;
+          setData(json);
+        }
+      } catch { /* ignore */ }
+    }
+  }, [userAddress]);
 
   const fetchWallet = useCallback(async () => {
     if (!userAddress) return;
@@ -428,10 +457,8 @@ export function AgentWalletCard() {
       {data?.address && (
         <SendToAgentDialog
           open={fundOpen}
-          onOpenChange={(open) => {
-            setFundOpen(open);
-            if (!open) fetchWallet();
-          }}
+          onOpenChange={setFundOpen}
+          onSuccess={pollAfterFund}
           agentAddress={data.address}
         />
       )}
