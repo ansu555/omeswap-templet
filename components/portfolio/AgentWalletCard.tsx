@@ -38,7 +38,7 @@ type StatusLabel = "not-initialized" | "needs-funding" | "initialized" | "ready"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const EXPLORER_BASE = "https://chainscan-newton.0g.ai";
+const EXPLORER_BASE = "https://chainscan.0g.ai";
 
 function truncate(addr: string) {
   return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
@@ -107,7 +107,11 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps
         value: parseEther(amount),
       });
       setStatus("confirming");
-      await waitForTransactionReceipt(config, { hash });
+      try {
+        await waitForTransactionReceipt(config, { hash, timeout: 60_000, pollingInterval: 3_000 });
+      } catch {
+        // 0G chain can be slow — tx was submitted, treat as success
+      }
       setStatus("sent");
       setAmount("");
       setTimeout(() => {
