@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useSendTransaction, useAccount } from "wagmi";
+import { useSendTransaction, useAccount, useConfig } from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
 import { parseEther, isAddress } from "viem";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -83,10 +84,11 @@ interface SendDialogProps {
 
 function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps) {
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "confirming" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const { sendTransactionAsync } = useSendTransaction();
+  const config = useConfig();
 
   const handleSend = async () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
@@ -100,10 +102,12 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps
     setErrorMsg("");
     setStatus("sending");
     try {
-      await sendTransactionAsync({
+      const hash = await sendTransactionAsync({
         to: agentAddress as `0x${string}`,
         value: parseEther(amount),
       });
+      setStatus("confirming");
+      await waitForTransactionReceipt(config, { hash });
       setStatus("sent");
       setAmount("");
       setTimeout(() => {
@@ -157,13 +161,17 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress }: SendDialogProps
           <Button
             className="w-full bg-primary hover:bg-primary/90"
             onClick={handleSend}
-            disabled={status === "sending" || status === "sent"}
+            disabled={status === "sending" || status === "confirming" || status === "sent"}
           >
-            {status === "sending" && (
+            {(status === "sending" || status === "confirming") && (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             )}
             {status === "sent" && <Check className="w-4 h-4 mr-2" />}
-            {status === "sent" ? "Sent!" : "Send A0GI"}
+            {status === "sent"
+              ? "Sent!"
+              : status === "confirming"
+              ? "Confirming…"
+              : "Send A0GI"}
           </Button>
         </div>
       </DialogContent>
