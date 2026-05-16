@@ -49,8 +49,6 @@ export function ChatbotPanel() {
   const { isOpen, closeChat, agentBuilderMode, agentBuilderContext } =
     useChatContext();
 
-  // Hide the generic chat panel when agent-builder page has its own AgentSidebar
-  if (agentBuilderMode) return null;
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -166,6 +164,9 @@ export function ChatbotPanel() {
   };
 
   const hasMessages = messages.length > 0;
+
+  // Hide the generic chat panel when agent-builder page has its own AgentSidebar.
+  if (agentBuilderMode) return null;
 
   return (
     <AnimatePresence mode="wait">

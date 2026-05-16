@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "hardhat:compile": "cd ../Avalanche_contract && npx hardhat compile",
     "hardhat:test": "cd ../Avalanche_contract && npx hardhat test",
     "hardhat:mint": "cd ../Avalanche_contract && npx hardhat run scripts/mintTokens.js --network avalanche",

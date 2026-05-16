@@ -93,7 +93,6 @@ function getEncryptionKey(): Buffer {
 function encrypt(plaintext: string): Buffer {
   // Dynamic require so this module can be imported without the browser
   // receiving a crypto-node shim in the bundle.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require('crypto') as typeof import('crypto')
 
   const key = getEncryptionKey()
@@ -115,7 +114,6 @@ function encrypt(plaintext: string): Buffer {
  * Throws if the authTag is invalid (tampered or wrong key).
  */
 function decrypt(blob: Uint8Array): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require('crypto') as typeof import('crypto')
 
   const key = getEncryptionKey()

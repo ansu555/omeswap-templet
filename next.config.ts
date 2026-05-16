@@ -22,6 +22,7 @@ if (typeof globalThis !== 'undefined' &&
 
 const config: NextConfig = {
   reactStrictMode: true,
+  outputFileTracingRoot: process.cwd(),
   images: {
     remotePatterns: [
       {

@@ -15,7 +15,6 @@ import { AgentNode } from "@/components/research/nodes/AgentNode";
 
 // Cast needed: xyflow NodeTypes expects NodeProps without data generic
 const nodeTypes: NodeTypes = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   agentNode: AgentNode as any,
 };
 
