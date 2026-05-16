@@ -197,7 +197,10 @@ export async function GET(
         })
       }
 
-      return NextResponse.json({ exists: false }, { status: 500 })
+      // Supabase query failed — treat as not onboarded so the user can proceed.
+      // If they already completed onboarding, the POST will return 409 and redirect them.
+      console.error('[onboarding] GET supabase error:', error)
+      return NextResponse.json({ exists: false })
     }
 
     if (!data) {
@@ -209,7 +212,8 @@ export async function GET(
     )
 
     if (!normalizedCategory) {
-      return NextResponse.json({ exists: false }, { status: 500 })
+      console.error('[onboarding] GET unknown risk_category in DB:', data.risk_category)
+      return NextResponse.json({ exists: false })
     }
 
     return NextResponse.json({
@@ -217,8 +221,9 @@ export async function GET(
       riskScore: data.risk_score,
       riskCategory: normalizedCategory,
     })
-  } catch {
-    return NextResponse.json({ exists: false }, { status: 500 })
+  } catch (err) {
+    console.error('[onboarding] GET unexpected error:', err)
+    return NextResponse.json({ exists: false })
   }
 }
 

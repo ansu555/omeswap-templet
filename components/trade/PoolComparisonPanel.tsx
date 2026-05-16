@@ -60,6 +60,7 @@ export function PoolComparisonPanel() {
     chainId: getDefaultChainId(),
     query: {
       enabled: isOmeSwapConfigured,
+      refetchInterval: REFRESH_MS,
     },
   });
 
@@ -71,6 +72,7 @@ export function PoolComparisonPanel() {
     chainId: getDefaultChainId(),
     query: {
       enabled: isOmeSwapConfigured && poolId != null,
+      refetchInterval: REFRESH_MS,
     },
   });
 
