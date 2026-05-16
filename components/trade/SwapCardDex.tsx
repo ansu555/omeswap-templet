@@ -20,10 +20,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getExplorerLink, getDexRouters, getDefaultChainId, getChainConfig } from "@/lib/chain-registry";
+import { JAINE_DEX_ID, JAINE_DEX_NAME, JAINE_SWAP_URL } from "@/lib/dex/jaine";
 
 type SwapMode = "swap" | "limit" | "buy" | "sell";
 
 const DEX_LABEL_COLORS: Record<string, string> = {
+  [JAINE_DEX_ID]: "text-primary",
   zerog_dex: "text-violet-300",
   zerog_dex_v2: "text-violet-200",
 };
@@ -38,7 +40,6 @@ const DEX_LABELS: Record<string, { name: string; color: string }> =
 
 const DEFAULT_CHAIN_ID = getDefaultChainId();
 const DEFAULT_CHAIN_NAME = getChainConfig(DEFAULT_CHAIN_ID).chain.name;
-const HUB_SWAP_URL = "https://hub.0g.ai/swap";
 
 export function SwapCardDex() {
   const { isConnected, chain, address, switchChain } = useWallet();
@@ -73,11 +74,13 @@ export function SwapCardDex() {
   // tokenIn/tokenOut are object keys in TOKEN_ADDRESSES (e.g. "W0G", "USDC")
   const payToken = TOKEN_ADDRESSES[tokenIn] ?? TOKEN_LIST[0];
   const receiveToken = TOKEN_ADDRESSES[tokenOut] ?? TOKEN_LIST[1];
-  const selectedDexLabel = DEX_LABELS[selectedDex] ?? { name: "Jaine Hub", color: "text-primary" };
-  const isSuggestedPair = tokenIn === "W0G" && tokenOut === "USDC";
+  const selectedDexLabel = DEX_LABELS[selectedDex] ?? { name: JAINE_DEX_NAME, color: "text-primary" };
+  const isSuggestedPair =
+    (tokenIn === "W0G" && tokenOut === "USDC") ||
+    (tokenIn === "USDC" && tokenOut === "W0G");
 
-  const openHubSwap = () => {
-    window.open(HUB_SWAP_URL, "_blank", "noopener,noreferrer");
+  const openJaineSwap = () => {
+    window.open(JAINE_SWAP_URL, "_blank", "noopener,noreferrer");
   };
 
   const setSuggestedPair = () => {
@@ -350,24 +353,24 @@ export function SwapCardDex() {
                 <div className="text-xs text-muted-foreground">
                   {hasConfiguredRouters
                     ? "No liquidity found for this pair."
-                    : "In-app router addresses are still placeholders for this 0G deployment."}
+                    : "Jaine in-app swaps currently support W0G / USDC.e on 0G."}
                 </div>
 
                 {!hasConfiguredRouters ? (
                   <a
-                    href={HUB_SWAP_URL}
+                    href={JAINE_SWAP_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
                   >
-                    Open 0G Hub Swap (Jaine)
+                    Open Jaine
                   </a>
                 ) : !isSuggestedPair ? (
                   <button
                     onClick={setSuggestedPair}
                     className="inline-flex text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
                   >
-                    Try W0G → USDC pair
+                    Try W0G / USDC.e
                   </button>
                 ) : null}
               </div>
@@ -431,7 +434,7 @@ export function SwapCardDex() {
         <button
           onClick={() => {
             if (!hasConfiguredRouters) {
-              openHubSwap();
+              openJaineSwap();
               return;
             }
             if (isValidSwap && !isLoading) executeSwap();
@@ -444,7 +447,7 @@ export function SwapCardDex() {
               ? `Approving ${payToken.symbol}...`
               : 'Swapping...'
             : !hasConfiguredRouters
-              ? "Open 0G Hub Swap"
+              ? "Open Jaine"
               : !hasValidAmount
               ? 'Enter Amount'
               : !hasSufficientBalance

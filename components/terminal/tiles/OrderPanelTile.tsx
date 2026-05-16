@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { JAINE_SWAP_URL } from "@/lib/dex/jaine";
 import { useChartStore } from "@/store/chart";
 import { useTerminalStore } from "@/store/terminal";
 
 type Side = "buy" | "sell";
-const HUB_SWAP_URL = "https://hub.0g.ai/swap";
 
 export function OrderPanelTile() {
   const activeSymbol = useTerminalStore((s) => s.activeSymbol);
@@ -81,7 +81,7 @@ export function OrderPanelTile() {
         </div>
 
         <Link
-          href={HUB_SWAP_URL}
+          href={JAINE_SWAP_URL}
           target="_blank"
           rel="noopener noreferrer"
           onMouseDown={(e) => e.stopPropagation()}
@@ -92,7 +92,7 @@ export function OrderPanelTile() {
               : "bg-red-500/80 text-white hover:bg-red-500",
           )}
         >
-          Open 0G Hub Swap
+          Open Jaine
           <ExternalLink size={12} />
         </Link>
       </div>

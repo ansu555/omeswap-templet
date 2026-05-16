@@ -10,6 +10,9 @@ import {
 import type { PrivateKeyAccount } from 'viem/accounts'
 
 export const JAINE_CHAIN_ID = 16661
+export const JAINE_DEX_ID = 'jaine'
+export const JAINE_DEX_NAME = 'Jaine'
+export const JAINE_SWAP_URL = 'https://jaine.app/swap'
 export const JAINE_W0G_ADDRESS = '0x1cd0690ff9a693f5ef2dd976660a8dafc81a109c' as const
 export const JAINE_USDCE_ADDRESS = '0x1f3aa82227281ca364bfb3d253b0f1af1da6473e' as const
 export const JAINE_V3_ROUTER_ADDRESS = '0x8b598a7c136215a95ba0282b4d832b9f9801f2e2' as const
@@ -100,6 +103,18 @@ const USDCE: JaineToken = {
 
 export function isJaineTicker(ticker: string): boolean {
   return ['W0G', '0G', 'OG', 'ZEROG'].includes(ticker.toUpperCase())
+}
+
+export function isJaineTokenPair(tokenIn: string, tokenOut: string): boolean {
+  const input = tokenIn.toLowerCase()
+  const output = tokenOut.toLowerCase()
+  const w0g = JAINE_W0G_ADDRESS.toLowerCase()
+  const usdce = JAINE_USDCE_ADDRESS.toLowerCase()
+
+  return (
+    (input === w0g && output === usdce) ||
+    (input === usdce && output === w0g)
+  )
 }
 
 export function getJaineTradeTokens(decision: 'BUY' | 'SELL') {

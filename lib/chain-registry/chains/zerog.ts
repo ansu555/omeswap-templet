@@ -13,6 +13,11 @@
 import { defineChain } from "viem";
 import type { Address } from "viem";
 import type { ChainConfig } from "../types";
+import {
+  JAINE_DEX_ID,
+  JAINE_DEX_NAME,
+  JAINE_V3_ROUTER_ADDRESS,
+} from "../../dex/jaine";
 
 type ZeroGNetwork = "mainnet" | "testnet";
 
@@ -126,9 +131,18 @@ export const zeroGConfig: ChainConfig = {
   explorerTxPath: "/tx/",
   explorerAddressPath: "/address/",
 
-  // Jaine uses a proprietary non-standard router (confirmed via on-chain tx tracing).
-  // Direct integration requires their SDK/ABI — swaps are routed via jaine.app.
-  dexRouters: [],
+  // Jaine's current public 0G market surface supports W0G/USDC.e swaps.
+  // It is handled by the app's custom Jaine adapter rather than the generic V2 router path.
+  dexRouters: ZEROG_NETWORK === "mainnet"
+    ? [
+        {
+          id: JAINE_DEX_ID,
+          name: JAINE_DEX_NAME,
+          type: "custom",
+          routerAddress: JAINE_V3_ROUTER_ADDRESS as Address,
+        },
+      ]
+    : [],
 
   // Verified token addresses on 0G mainnet (chain ID 16661).
   tokens: {

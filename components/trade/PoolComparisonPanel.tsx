@@ -124,7 +124,7 @@ export function PoolComparisonPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Pool Details</h3>
-          <p className="text-sm text-muted-foreground">Jaine Hub vs OmeSwap</p>
+          <p className="text-sm text-muted-foreground">Jaine vs OmeSwap</p>
         </div>
         <span className="text-[11px] px-2 py-1 rounded-full border border-primary/30 text-primary">
           0G
