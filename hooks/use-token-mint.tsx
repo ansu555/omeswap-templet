@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   useAccount,
   useWriteContract,
@@ -27,7 +27,7 @@ export function useTokenMint(tokenSymbol: string) {
   const token = TOKENS[tokenSymbol];
 
   const {
-    writeContract,
+    writeContractAsync,
     data: hash,
     isPending: isWritePending,
   } = useWriteContract();
@@ -48,12 +48,12 @@ export function useTokenMint(tokenSymbol: string) {
   });
 
   // Mint tokens
-  const mintAmountRef = { current: "" };
+  const mintAmountRef = useRef("");
   const mint = async (amount: string) => {
     if (!address) return;
     mintAmountRef.current = amount;
 
-    writeContract({
+    return writeContractAsync({
       address: token.address as Address,
       abi: ERC20ABI,
       functionName: "mint",
@@ -78,7 +78,7 @@ export function useTokenMint(tokenSymbol: string) {
         source: "token-mint",
       });
     }
-  }, [isSuccess, hash]);
+  }, [addTransaction, address, hash, isSuccess, tokenSymbol]);
 
   return {
     balance: balance ? formatEther(balance as bigint) : "0",
@@ -102,7 +102,7 @@ export function useBatchMint() {
   const chainId = chainConfig.chain.id;
 
   const {
-    writeContract,
+    writeContractAsync,
     data: hash,
     isPending: isWritePending,
   } = useWriteContract();
@@ -113,15 +113,15 @@ export function useBatchMint() {
   const mintAll = async (amount: string = "10000") => {
     if (!address) return;
 
-    // Mint first token (others can be minted subsequently)
-    const firstToken = Object.values(TOKENS)[0];
-    writeContract({
-      address: firstToken.address as Address,
-      abi: ERC20ABI,
-      functionName: "mint",
-      args: [address, parseEther(amount)],
-      chainId,
-    });
+    for (const token of Object.values(TOKENS)) {
+      await writeContractAsync({
+        address: token.address as Address,
+        abi: ERC20ABI,
+        functionName: "mint",
+        args: [address, parseEther(amount)],
+        chainId,
+      });
+    }
   };
 
   return {

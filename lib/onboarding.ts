@@ -100,7 +100,7 @@ export const RISK_QUESTIONS: RiskQuestion[] = [
   {
     id: 'q5',
     title: 'Primary investment objective',
-    description: 'What is the main goal for this portfolio? This shapes how Omeswap\'s AI calibrates routing, alerts, and strategy suggestions.',
+    description: 'What is the main goal for this portfolio? This shapes how Omega\'s AI calibrates routing, alerts, and strategy suggestions.',
     options: [
       { id: 'q5_o1', label: 'Capital preservation — protect principal first', score: 1 },
       { id: 'q5_o2', label: 'Steady growth with controlled risk', score: 2 },

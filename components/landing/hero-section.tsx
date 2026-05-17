@@ -64,7 +64,7 @@ function ScreenshotSection({
       >
         <Image
           src="/swap-preview.png"
-          alt="OmeSwap agentic trading co-pilot interface preview"
+          alt="Omega agentic trading co-pilot interface preview"
           width={3420}
           height={2224}
           className="w-full h-auto"
@@ -83,7 +83,7 @@ function HeroContent() {
         <br className="sm:hidden" /> AI co-pilot.
       </h1>
       <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 opacity-80 max-w-xl">
-        OmeSwap is a six-agent AI co-pilot for market decisions, risk control,
+        Omega is a six-agent AI co-pilot for market decisions, risk control,
         strategy research, and chain-agnostic execution. Every signal comes
         with a clear Decision Receipt you can question at any depth.
       </p>
@@ -113,13 +113,13 @@ function LandingHeader() {
             <div className="flex items-center gap-2.5 rounded-full bg-background/5 border border-border backdrop-blur-lg shadow-lg px-4 py-2">
               <Image
                 src="/logo.png"
-                alt="OmeSwap"
+                alt="Omega"
                 width={32}
                 height={32}
                 className="flex-shrink-0"
               />
               <span className="text-lg font-semibold text-foreground">
-                OmeSwap
+                Omega
               </span>
             </div>
           </Link>
@@ -235,7 +235,7 @@ function ProtocolStatsSection() {
               <div className="relative flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
                 <span className="text-gray-200 text-base font-medium">
-                  OmeSwap Agent Stack
+                  Omega Agent Stack
                 </span>
               </div>
             </motion.div>

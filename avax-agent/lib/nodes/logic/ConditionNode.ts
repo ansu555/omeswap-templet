@@ -39,12 +39,17 @@ export class ConditionNode extends BaseNode {
     inputs: Record<string, unknown>,
     context: ExecutionContext
   ): Promise<Record<string, unknown>> {
-    const value = inputs.value as number
+    const value = inputs.value as number | undefined
     const operator = (this.config.operator as Operator) || '>'
     // Use connected input first, fall back to config value
     const threshold = inputs.threshold !== undefined
       ? (inputs.threshold as number)
       : ((this.config.threshold as number) ?? 0)
+
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      context.addLog('[Condition] No numeric value input received', 'warn')
+      return { true: null, false: null }
+    }
 
     const ops: Record<Operator, (a: number, b: number) => boolean> = {
       '>': (a, b) => a > b,

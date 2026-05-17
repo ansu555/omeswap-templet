@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useStore } from "@/store/agent-builder";
+import { useAccount } from "wagmi";
 import {
   Bot,
   Send,
@@ -53,6 +54,9 @@ interface ApiMessage {
     function: { name: string; arguments: string };
   }[];
 }
+
+const WELCOME_MESSAGE =
+  "Hi! I'm your **Omega bot builder agent**.\n\nTell me what 0G trading strategy you want and I'll build it on the canvas.\n\n*For example: \"Build a BTC momentum tracker that marks the chart when price rises\"*";
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
@@ -265,6 +269,7 @@ async function* parseSSE(body: ReadableStream<Uint8Array>) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AgentSidebar() {
+  const { address } = useAccount();
   const {
     nodes,
     edges,
@@ -280,8 +285,7 @@ export default function AgentSidebar() {
     {
       id: "welcome",
       role: "assistant",
-      content:
-        "Hi! I'm your **AVAX bot builder agent**.\n\nTell me what trading strategy you want and I'll build it on the canvas.\n\n*For example: \"Build a BTC momentum tracker that marks the chart when price rises\"*",
+      content: WELCOME_MESSAGE,
     },
   ]);
   const [input, setInput] = useState("");
@@ -294,6 +298,18 @@ export default function AgentSidebar() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === "welcome" &&
+        msg.role === "assistant" &&
+        msg.content.includes("AVAX bot builder agent")
+          ? { ...msg, content: WELCOME_MESSAGE }
+          : msg,
+      ),
+    );
+  }, []);
 
   function getCanvasState() {
     return {
@@ -410,9 +426,14 @@ export default function AgentSidebar() {
     > = {};
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (address) headers["x-wallet-address"] = address;
+
       const res = await fetch("/api/agent-builder/agent", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         signal: abortRef.current.signal,
         body: JSON.stringify({
           messages: apiHistoryRef.current,
@@ -421,8 +442,11 @@ export default function AgentSidebar() {
       });
 
       if (!res.ok || !res.body) {
+        const json = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         updateLastAssistant({
-          content: "Error connecting to agent. Check your API key.",
+          content: json?.error ?? "Error connecting to agent. Check your API key.",
           streaming: false,
           isThinking: false,
         });
@@ -572,7 +596,7 @@ export default function AgentSidebar() {
       {
         id: "welcome2",
         role: "assistant",
-        content: "Chat cleared. What would you like to build?",
+        content: "Chat cleared. What 0G strategy would you like to build?",
       },
     ]);
     apiHistoryRef.current = [];
@@ -605,7 +629,7 @@ export default function AgentSidebar() {
             AI Agent
           </p>
           <p className="text-white/30 text-[10px] mt-0.5 leading-none">
-            AVAX Bot Builder
+            Omega Bot Builder
           </p>
         </div>
         {loading && (

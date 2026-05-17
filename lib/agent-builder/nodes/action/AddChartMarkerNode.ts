@@ -46,8 +46,8 @@ export class AddChartMarkerNode extends BaseNode {
       key: 'priceSymbol',
       label: 'Price Symbol (Binance)',
       type: 'select',
-      options: ['AVAXUSDT', 'BTCUSDT', 'ETHUSDT', 'JOEUSDT'],
-      default: 'AVAXUSDT',
+      options: ['BTCUSDT', 'ETHUSDT', 'JOEUSDT'],
+      default: 'BTCUSDT',
     },
   ]
 
@@ -61,7 +61,7 @@ export class AddChartMarkerNode extends BaseNode {
     const color = (this.config.color as string) || '#22c55e'
     const shape = (this.config.shape as 'arrowUp' | 'arrowDown' | 'circle') || 'arrowUp'
     const useCurrentPrice = !!this.config.useCurrentPrice
-    const priceSymbol = (this.config.priceSymbol as string) || 'AVAXUSDT'
+    const priceSymbol = (this.config.priceSymbol as string) || 'BTCUSDT'
 
     const time = context.backtestCandle?.time ?? Math.floor(Date.now() / 1000)
 

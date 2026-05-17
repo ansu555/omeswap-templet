@@ -49,6 +49,20 @@ export async function runBot(
 ): Promise<Record<string, Record<string, unknown>>> {
   const order = topologicalSort(nodes, edges)
   const outputs: Record<string, Record<string, unknown>> = {}
+  const omittedNodes = nodes.filter((node) => !order.includes(node.id))
+
+  if (omittedNodes.length > 0) {
+    const labels = omittedNodes.map((node) => {
+      const instance = nodeInstances.get(node.id)
+      return instance?.label || String((node.data as Record<string, unknown>)?.label || node.id)
+    })
+    onLog(
+      '',
+      'Runner',
+      `Skipped ${omittedNodes.length} node(s) because the workflow contains a cycle or no valid entry path: ${labels.join(', ')}`,
+      'warn',
+    )
+  }
 
   for (const nodeId of order) {
     const instance = nodeInstances.get(nodeId)

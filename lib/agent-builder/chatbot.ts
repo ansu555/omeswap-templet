@@ -114,6 +114,8 @@ export class AgentChatbotService {
         id: generateBlockId(),
         source: blocks[conn.sourceIndex]?.id || '',
         target: blocks[conn.targetIndex]?.id || '',
+        sourceHandle: conn.sourceHandle,
+        targetHandle: conn.targetHandle,
         type: conn.type || 'default',
       }));
 

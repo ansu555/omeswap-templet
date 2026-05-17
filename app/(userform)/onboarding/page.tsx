@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Loader2, RefreshCw, Copy, LogOut, Check } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Copy, LogOut, Check } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 
@@ -31,6 +31,8 @@ import { cn } from '@/lib/utils'
 type OnboardingStatusResponse =
   | { exists: false }
   | { exists: true; riskScore: number; riskCategory: 'conservative' | 'balanced' | 'aggressive' }
+
+const STATUS_CHECK_TIMEOUT_MS = 8000
 
 function hasCompleteResponses(r: Partial<RiskResponses>): r is RiskResponses {
   return RESPONSE_KEYS.every((key) => isValidResponseScore(r[key]))
@@ -63,11 +65,13 @@ export default function OnboardingPage() {
 
     setStatusLoading(true)
     setStatusError(null)
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), STATUS_CHECK_TIMEOUT_MS)
 
     try {
       const response = await fetch(
         `/api/onboarding?wallet=${encodeURIComponent(normalizedAddress)}`,
-        { method: 'GET', cache: 'no-store' },
+        { method: 'GET', cache: 'no-store', signal: controller.signal },
       )
 
       if (!response.ok) throw new Error('Unable to verify onboarding status.')
@@ -81,8 +85,10 @@ export default function OnboardingPage() {
 
       setStatusCheckedAddress(normalizedAddress)
     } catch {
-      setStatusError('Could not verify onboarding status. Please retry.')
+      setStatusCheckedAddress(normalizedAddress)
+      setStatusError('Could not verify previous onboarding status. You can continue and launch anyway.')
     } finally {
+      window.clearTimeout(timeoutId)
       setStatusLoading(false)
     }
   }, [normalizedAddress, router])
@@ -159,12 +165,14 @@ export default function OnboardingPage() {
       })
 
       if (response.status === 409) {
+        window.localStorage.setItem('onboarding_wallet', normalizedAddress)
         router.replace('/explore')
         return
       }
 
       if (!response.ok) throw new Error('Unable to submit onboarding.')
 
+      window.localStorage.setItem('onboarding_wallet', normalizedAddress)
       router.replace('/explore')
     } catch {
       setSubmitError('Submission failed. Please try again.')
@@ -200,36 +208,6 @@ export default function OnboardingPage() {
     return <ExploreSkeleton />
   }
 
-  // ── Status error ─────────────────────────────────────────────────
-  if (statusError) {
-    return (
-      <div className="relative min-h-screen overflow-hidden bg-background">
-        <BackgroundPaths />
-        <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md space-y-5 rounded-2xl border border-red-400/20 bg-red-400/5 p-7"
-            style={{ backdropFilter: 'blur(12px)' }}
-          >
-            <div>
-              <h2 className="text-lg font-semibold text-white">Status check failed</h2>
-              <p className="mt-2 text-sm text-red-300/80">{statusError}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => { void fetchStatus() }}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-400/12"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Retry
-            </button>
-          </motion.div>
-        </div>
-      </div>
-    )
-  }
-
   // ── Questionnaire ────────────────────────────────────────────────
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -252,7 +230,7 @@ export default function OnboardingPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium tracking-widest text-white/25 uppercase">
-                Omeswap
+                Omega
               </span>
               <div className="flex items-center gap-3">
                 <button
@@ -277,6 +255,22 @@ export default function OnboardingPage() {
                 </button>
               </div>
             </div>
+
+            {statusError && (
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
+                <p className="text-xs leading-relaxed text-amber-200/75">
+                  {statusError}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { void fetchStatus() }}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/8 px-2.5 py-1 text-[11px] font-medium text-amber-200 transition hover:bg-amber-400/12"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Retry
+                </button>
+              </div>
+            )}
 
             <ProgressBar answeredCount={answeredCount} total={RISK_QUESTIONS.length} />
           </motion.div>

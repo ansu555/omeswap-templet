@@ -230,7 +230,7 @@ export const useStore = create<BotStore>((set, get) => ({
   logs: [],
   backtestMode: false,
   backtestConfig: {
-    symbol: "AVAXUSDT",
+    symbol: "BTCUSDT",
     interval: "1h",
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       .toISOString()

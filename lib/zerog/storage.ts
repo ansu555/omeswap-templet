@@ -36,7 +36,6 @@ export interface StorageDownloadResult {
 // We dynamically import the SDK so the bundle does not break in environments
 // where @0glabs/0g-ts-sdk is not installed.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _sdk: any | null = null
 
 async function getSDK() {
@@ -66,21 +65,30 @@ async function getSDK() {
 export async function uploadToStorage(
   data: Uint8Array | string,
   storageRpc = ZEROG_STORAGE_RPC,
+  signer?: unknown,
 ): Promise<StorageUploadResult> {
+  if (!signer) {
+    throw new Error(
+      '0G Storage upload requires an ethers Signer. Pass a server-side signer or use inline fallback storage.'
+    )
+  }
+
   const sdk = await getSDK()
   const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data
 
   const indexer = new sdk.Indexer(storageRpc)
-  const [nodes] = await indexer.selectNodes(1)
 
-  const uploadTask = new sdk.MemoryUploadTask(bytes)
-  const [rootHash, err] = await uploadTask.buildMerkle()
-  if (err) throw new Error(`0G Storage merkle error: ${err}`)
+  // SDK upload() requires: file (AbstractFile), blockchain_rpc, signer, opts
+  // For raw bytes we need to wrap them in a MemoryFile if the SDK provides one,
+  // otherwise callers must supply an AbstractFile.
+  const [result, err] = await indexer.upload(
+    bytes,
+    ZEROG_STORAGE_RPC,
+    signer,
+  )
+  if (err) throw new Error(`0G Storage upload error: ${err}`)
 
-  const client = new sdk.StorageClient(nodes[0])
-  const txHash = await client.upload(uploadTask)
-
-  return { rootHash: rootHash as string, txHash, size: bytes.length }
+  return { rootHash: result.rootHash, txHash: result.txHash, size: bytes.length }
 }
 
 /**

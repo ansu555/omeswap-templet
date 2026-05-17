@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpDown, ExternalLink } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useTerminalStore } from "@/store/terminal";
@@ -89,8 +89,7 @@ export function OrderPanelTile() {
               : "bg-red-500/80 text-white hover:bg-red-500",
           )}
         >
-          Execute on /trade
-          <ExternalLink size={12} />
+          {side === "buy" ? "Buy" : "Sell"} W0G
         </Link>
       </div>
     </div>

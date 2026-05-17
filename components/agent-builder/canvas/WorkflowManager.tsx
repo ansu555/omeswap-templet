@@ -8,7 +8,15 @@ import {
   type SavedWorkflow,
 } from "@/store/agent-builder";
 import { WORKFLOW_TEMPLATES } from "@/lib/agent-builder/templates";
-import { X, Save, FolderOpen, Trash2, FolderX, Sparkles } from "lucide-react";
+import {
+  X,
+  Save,
+  FolderOpen,
+  Trash2,
+  FolderX,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import clsx from "clsx";
 
 interface Props {
@@ -16,6 +24,7 @@ interface Props {
 }
 
 type Tab = "mine" | "templates";
+type TabConfig = readonly [Tab, string, LucideIcon];
 
 const TAG_COLORS: Record<string, string> = {
   beginner: "bg-green-900/40 text-green-400 border-green-700/40",
@@ -113,10 +122,10 @@ export default function WorkflowManager({ onClose }: Props) {
         <div className="flex border-b border-purple-500/20 px-5">
           {(
             [
-              ["templates", "Templates", <Sparkles size={12} />],
-              ["mine", "My Workflows", <FolderOpen size={12} />],
-            ] as const
-          ).map(([id, label, icon]) => (
+              ["templates", "Templates", Sparkles],
+              ["mine", "My Workflows", FolderOpen],
+            ] satisfies readonly TabConfig[]
+          ).map(([id, label, Icon]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -127,7 +136,7 @@ export default function WorkflowManager({ onClose }: Props) {
                   : "border-transparent text-white/40 hover:text-white/70",
               )}
             >
-              {icon}
+              <Icon size={12} />
               {label}
             </button>
           ))}

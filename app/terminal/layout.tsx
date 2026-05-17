@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+
+import { AvalancheWalletProvider } from "@/components/providers/avalanche-wallet-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 import "./terminal.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
-  title: "Perps · Phantom-style Trading",
+  title: "Trading Terminal · Omega",
   description:
-    "Trade perpetual futures with up to 50x leverage on a sleek Phantom-inspired interface.",
+    "Trade coins and perps with onchain market data, liquidity depth, and agentic execution context.",
 };
 
 export default function TerminalLayout({
@@ -12,5 +18,16 @@ export default function TerminalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="terminal-page">{children}</div>;
+  return (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <AvalancheWalletProvider>
+        <div className="terminal-page">{children}</div>
+      </AvalancheWalletProvider>
+    </ThemeProvider>
+  );
 }

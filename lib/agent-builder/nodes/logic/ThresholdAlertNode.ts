@@ -35,9 +35,14 @@ export class ThresholdAlertNode extends BaseNode {
     inputs: Record<string, unknown>,
     context: ExecutionContext
   ): Promise<Record<string, unknown>> {
-    const value = inputs.value as number
+    const value = inputs.value as number | undefined
     const direction = (this.config.direction as string) || 'above'
     const threshold = (this.config.threshold as number) ?? 0
+
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      context.addLog('[Threshold] No numeric value input received', 'warn')
+      return { triggered: false }
+    }
 
     const triggered =
       direction === 'above' ? value > threshold : value < threshold

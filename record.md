@@ -35,3 +35,8 @@ changes: implemented Phase 5 — Agent 5 risk agent; kelly.py (quarter-Kelly, vo
 user: ansu555
 branch: agents
 changes: implemented Phase 6 — Orchestrator & LangGraph; ats/orchestrator/ with graph.py (StateGraph), nodes.py (regime/signal_and_graph/risk), consensus.py, receipt_writer.py, __init__.py (run_pipeline entry point); tests/test_phase6.py 48/48 passed
+
+[2026-05-17 15:30]
+user: ansu555
+branch: main
+changes: added Jaine/Omega tabs to PoolComparisonPanel; Omega tab now reflects selected token pair dynamically; disabled Limit/Buy/Sell buttons visually in SwapCardDex; lifted token state in trade and liquidity pages

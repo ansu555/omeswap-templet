@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { JAINE_SWAP_URL } from "@/lib/dex/jaine";
 
 // Map pool IDs to token pairs (based on deployment)
 const POOL_PAIRS: { [key: string]: { token0: string; token1: string } } = {
@@ -45,6 +46,9 @@ export default function PoolPage() {
   const { address, isConnected } = useWallet();
   const [timeRange, setTimeRange] = useState("1D");
   const [showSwap, setShowSwap] = useState(false);
+  const openJaineSwap = () => {
+    window.open(JAINE_SWAP_URL, "_blank", "noopener,noreferrer");
+  };
 
   const poolPair = POOL_PAIRS[poolId];
   const token0 = poolPair ? TOKENS[poolPair.token0] : null;
@@ -357,9 +361,9 @@ export default function PoolPage() {
                 <Button
                   className="flex-1"
                   variant="outline"
-                  onClick={() => router.push('/trade')}
+                  onClick={openJaineSwap}
                 >
-                  + Add liquidity
+                  Open Jaine
                 </Button>
               </div>
             )}
@@ -537,7 +541,7 @@ export default function PoolPage() {
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1">Network</div>
-                  <div className="font-medium">Avalanche Mainnet</div>
+                  <div className="font-medium">0G Network</div>
                 </div>
               </div>
             </Card>
@@ -552,18 +556,18 @@ export default function PoolPage() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() => router.push('/trade')}
+                    onClick={openJaineSwap}
                   >
                     <Droplet className="w-4 h-4 mr-2" />
-                    Add Liquidity
+                    Open Jaine
                   </Button>
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() => router.push('/trade')}
+                    onClick={openJaineSwap}
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Swap Tokens
+                    Swap on Jaine
                   </Button>
                   <Button
                     className="w-full justify-start"
@@ -613,4 +617,3 @@ export default function PoolPage() {
     </div>
   );
 }
-

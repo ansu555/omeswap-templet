@@ -2,45 +2,12 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { motion } from 'framer-motion'
-import { BarChart3, Brain, ExternalLink, Shield, Zap } from 'lucide-react'
+import { ExternalLink, Shield } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
 import { BackgroundPaths } from '@/components/layout/background-paths'
 import LiquidEther from '@/components/ui/liquid-ether'
-
-const FEATURES = [
-
-  {
-    icon: Zap,
-    title: 'Smart Routing',
-    description: 'Best price execution across all major liquidity sources.',
-  },
-  {
-    icon: Brain,
-    title: 'AI Command Center',
-    description: 'Natural language interface for complex DeFi operations.',
-  },
-  {
-    icon: Shield,
-    title: 'Self-Custodial',
-    description: 'Complete control over your assets and private keys.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Deep Analytics',
-    description: 'Real-time portfolio tracking and risk assessment.',
-  },
-] as const
-
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-}
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -75,9 +42,9 @@ export function OnboardingHero() {
               {/* Brand Identity Anchor */}
               <div className="flex items-center gap-3">
                 <div className="relative h-8 w-8">
-                  <img src="/logo.png" alt="Omeswap" className="h-full w-full object-contain" />
+                  <img src="/logo.png" alt="Omega" className="h-full w-full object-contain" />
                 </div>
-                <span className="text-lg font-bold tracking-tight text-white">Omeswap</span>
+                <span className="text-lg font-bold tracking-tight text-white">Omega</span>
               </div>
 
               <div className="space-y-6">
@@ -253,5 +220,4 @@ function WalletBadge({ name, emoji, image }: { name: string; emoji?: string; ima
     </motion.div>
   )
 }
-
 

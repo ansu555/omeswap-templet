@@ -414,3 +414,23 @@ For the **Best Agent Frameworks** and **Best Autonomous Agents** tracks:
 - [ ] Swarm coordination messages sent via `postSwarmMessage` (0G DA)
 - [ ] Contract deployment addresses committed in `lib/chain-registry/chains/zerog.ts`
 - [ ] Working example agent in the README with inline code or link
+
+---
+
+## Gensyn AXL Hackathon Track — Integration Checklist
+
+For the **Best Application of Agent eXchange Layer (AXL)** track:
+
+- [ ] At least two AXL nodes are running and exchange messages over the mesh
+      (verify with `curl http://127.0.0.1:9002/topology` and `curl http://127.0.0.1:9012/topology`)
+- [ ] The peer-side MCP router exposes the OmeSwap agent service
+      (verify with `curl http://127.0.0.1:9013/services` — should list `ats-agents`)
+- [ ] At least one ATS run executes with `transport: 'axl'` and the SSE stream
+      contains `payload.axl = { peer_id, role }` annotations on agent events
+- [ ] `bun run axl:demo` completes and prints both Node A and Node B public keys
+- [ ] Per-role peer mapping is documented in `.env.example` (`AXL_PEER_*`)
+- [ ] Setup, env vars, and demo command are documented in `doc/axl.md`
+      and linked from the root `README.md`
+- [ ] No central message broker replaces what AXL provides — only the local
+      Next API (SSE) and persistence layer remain in-process
+- [ ] AXL private keys (`*.pem`) are kept out of git

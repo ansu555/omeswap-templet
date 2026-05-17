@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 import {
-  Bitcoin,
   Camera,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   ListFilter,
 } from "lucide-react";
 import {
@@ -25,62 +25,37 @@ import {
   type LineSeriesPartialOptions,
   type UTCTimestamp,
 } from "lightweight-charts";
+import type { DexCandle, DexMarket, DexTrade } from "@/lib/dex/types";
+import { pollLivePrice } from "@/lib/terminal/data/livePriceTick";
+import { CandleAggregator } from "@/lib/terminal/data/candleAggregator";
 
 type BtcCandle = CandlestickData<UTCTimestamp> & {
   volume: number;
 };
 
 type BtcStats = {
+  symbol: string;
+  pairLabel: string;
+  networkName: string;
+  dex: string;
   mark: number;
   index: number;
   changeAmount: number;
   changePercent: number;
   volume: number;
+  liquidity: number;
   fundingRate: number;
   nextFundingTime: number;
 };
 
-type BinanceKline = [
-  number,
-  string,
-  string,
-  string,
-  string,
-  string,
-  number,
-  string,
-  number,
-  string,
-  string,
-  string,
-];
-
-type BinanceTicker = {
-  lastPrice: string;
-  priceChange: string;
-  priceChangePercent: string;
-  quoteVolume: string;
+type MarketResponse = {
+  market: DexMarket;
 };
 
-type BinancePremiumIndex = {
-  markPrice: string;
-  indexPrice: string;
-  lastFundingRate: string;
-  nextFundingTime: number;
+type ChartResponse = {
+  candles: DexCandle[];
 };
 
-type BinanceKlineMessage = {
-  k: {
-    t: number;
-    o: string;
-    h: string;
-    l: string;
-    c: string;
-    v: string;
-  };
-};
-
-const SYMBOL = "BTCUSDT";
 const HISTORY_LIMIT = 240;
 const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"] as const;
 const INDICATORS = [
@@ -108,7 +83,7 @@ const chartColors = {
   panel: "hsl(270 40% 9%)",
 };
 
-export function Chart() {
+export function Chart({ marketId }: { marketId: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -127,31 +102,41 @@ export function Chart() {
   const macdSignalRef = useRef<ISeriesApi<"Line"> | null>(null);
   const macdHistogramRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const candlesRef = useRef<BtcCandle[]>([]);
+  const aggrRef = useRef<CandleAggregator | null>(null);
+  const stopLiveTickRef = useRef<(() => void) | null>(null);
   const [interval, setInterval] = useState<ChartInterval>("1m");
   const [enabledIndicators, setEnabledIndicators] = useState<Record<IndicatorName, boolean>>({
     "EMA 20": true,
-    "SMA 50": true,
-    "WMA 20": true,
+    "SMA 50": false,
+    "WMA 20": false,
     VWAP: true,
-    "BB 20": true,
-    "RSI 14": true,
-    MACD: true,
+    "BB 20": false,
+    "RSI 14": false,
+    MACD: false,
     VOL: true,
   });
   const [stats, setStats] = useState<BtcStats>({
+    symbol: "W0G",
+    pairLabel: "W0G/USDC.e",
+    networkName: "0G",
+    dex: "Jaine",
     mark: 0,
     index: 0,
     changeAmount: 0,
     changePercent: 0,
     volume: 0,
+    liquidity: 0,
     fundingRate: 0,
     nextFundingTime: 0,
   });
   const [latestCandle, setLatestCandle] = useState<BtcCandle | null>(null);
   const [status, setStatus] = useState<"loading" | "live" | "offline">("loading");
+  const explorerBase = "https://chainscan.0g.ai";
   const [utcTime, setUtcTime] = useState("");
   const [bottomTab, setBottomTab] = useState("Positions (0)");
   const [indicatorMenuOpen, setIndicatorMenuOpen] = useState(false);
+  const [trades, setTrades] = useState<DexTrade[]>([]);
+  const [tradesLoading, setTradesLoading] = useState(false);
 
   const syncIndicatorSeries = (
     candles: BtcCandle[],
@@ -294,11 +279,7 @@ export function Chart() {
         },
       },
       localization: {
-        priceFormatter: (price: number) =>
-          new Intl.NumberFormat("en-US", {
-            minimumFractionDigits: 1,
-            maximumFractionDigits: 1,
-          }).format(price),
+        priceFormatter: (price: number) => formatCompactNumber(price),
       },
     });
 
@@ -360,45 +341,33 @@ export function Chart() {
 
   useEffect(() => {
     let disposed = false;
-    let socket: WebSocket | null = null;
     const aborter = new AbortController();
 
     async function loadInitialChart() {
       setStatus("loading");
 
       try {
-        const [klinesResponse, tickerResponse] = await Promise.all([
-          fetch(
-            `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${interval}&limit=${HISTORY_LIMIT}`,
-            { signal: aborter.signal },
-          ),
-          fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${SYMBOL}`, {
+        const [chartResponse, marketResponse] = await Promise.all([
+          fetch(`/api/dex/chart?market=${encodeURIComponent(marketId)}&interval=${interval}`, {
+            signal: aborter.signal,
+          }),
+          fetch(`/api/dex/markets?id=${encodeURIComponent(marketId)}`, {
             signal: aborter.signal,
           }),
         ]);
 
-        if (!klinesResponse.ok || !tickerResponse.ok) {
-          throw new Error("BTC market feed request failed");
+        if (!chartResponse.ok || !marketResponse.ok) {
+          throw new Error("Market feed request failed");
         }
 
-        const klines = (await klinesResponse.json()) as BinanceKline[];
-        const ticker = (await tickerResponse.json()) as BinanceTicker;
-        let premium: BinancePremiumIndex | null = null;
-
-        try {
-          const premiumResponse = await fetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${SYMBOL}`, {
-            signal: aborter.signal,
-          });
-
-          premium = premiumResponse.ok ? ((await premiumResponse.json()) as BinancePremiumIndex) : null;
-        } catch {
-          premium = null;
-        }
+        const chart = (await chartResponse.json()) as ChartResponse;
+        const marketSnapshot = (await marketResponse.json()) as MarketResponse;
 
         if (disposed) return;
 
-        const candles = klines.map(toCandle);
+        const candles = chart.candles.map(toCandle).slice(-HISTORY_LIMIT);
         const last = candles[candles.length - 1] ?? null;
+        const market = marketSnapshot.market;
 
         candlesRef.current = candles;
         candleSeriesRef.current?.setData(candles);
@@ -407,40 +376,50 @@ export function Chart() {
 
         setLatestCandle(last);
         setStats({
-          mark: premium ? Number(premium.markPrice) : Number(ticker.lastPrice),
-          index: premium ? Number(premium.indexPrice) : Number(ticker.lastPrice),
-          changeAmount: Number(ticker.priceChange),
-          changePercent: Number(ticker.priceChangePercent),
-          volume: Number(ticker.quoteVolume),
-          fundingRate: premium ? Number(premium.lastFundingRate) : 0,
-          nextFundingTime: premium?.nextFundingTime ?? 0,
+          symbol: market.symbol,
+          pairLabel: market.pairLabel,
+          networkName: market.networkName,
+          dex: market.dex,
+          mark: market.priceUsd,
+          index: market.priceUsd,
+          changeAmount: market.priceUsd * (market.change24h / 100),
+          changePercent: market.change24h,
+          volume: market.volume24hUsd,
+          liquidity: market.liquidityUsd,
+          fundingRate: 0,
+          nextFundingTime: 0,
         });
         setStatus("live");
 
-        socket = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
-        socket.onopen = () => {
-          if (!disposed) setStatus("live");
-        };
-        socket.onmessage = (event) => {
-          const message = JSON.parse(event.data as string) as BinanceKlineMessage;
-          const liveCandle = toLiveCandle(message);
-
-          candlesRef.current = upsertCandle(candlesRef.current, liveCandle);
-          candleSeriesRef.current?.update(liveCandle);
-          if (enabledIndicators.VOL) volumeSeriesRef.current?.update(toVolume(liveCandle));
-          syncIndicatorSeries(candlesRef.current, enabledIndicators);
-          setLatestCandle(liveCandle);
-          setStats((current) => ({
-            ...current,
-            mark: liveCandle.close,
-          }));
-        };
-        socket.onerror = () => {
-          if (!disposed) setStatus("offline");
-        };
-        socket.onclose = () => {
-          if (!disposed) setStatus("offline");
-        };
+        // Seed a fresh aggregator from the reloaded history and restart live ticker
+        aggrRef.current = new CandleAggregator(interval);
+        stopLiveTickRef.current?.();
+        stopLiveTickRef.current = pollLivePrice({
+          marketId,
+          onTick: (price) => {
+            if (disposed) return;
+            const live = aggrRef.current?.tick(price);
+            if (!live) return;
+            candleSeriesRef.current?.update({
+              time: live.time,
+              open: live.open,
+              high: live.high,
+              low: live.low,
+              close: live.close,
+            });
+            volumeSeriesRef.current?.update({
+              time: live.time,
+              value: 0,
+              color: live.close >= live.open ? `${chartColors.bull}80` : `${chartColors.bear}80`,
+            });
+            setLatestCandle((prev) =>
+              prev
+                ? ({ ...prev, time: live.time, open: live.open, high: live.high, low: live.low, close: live.close } as BtcCandle)
+                : (live as BtcCandle),
+            );
+            setStats((prev) => ({ ...prev, mark: live.close, index: live.close }));
+          },
+        });
       } catch {
         if (!disposed && !aborter.signal.aborted) {
           setStatus("offline");
@@ -449,16 +428,45 @@ export function Chart() {
     }
 
     loadInitialChart();
+    const timer = window.setInterval(loadInitialChart, 30000);
 
     return () => {
       disposed = true;
       aborter.abort();
-      socket?.close();
+      window.clearInterval(timer);
+      stopLiveTickRef.current?.();
+      stopLiveTickRef.current = null;
     };
-  }, [enabledIndicators, interval]);
+  }, [enabledIndicators, interval, marketId]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function loadTrades() {
+      setTradesLoading(true);
+      try {
+        const response = await fetch(`/api/dex/trades?market=${encodeURIComponent(marketId)}`);
+        if (!response.ok) throw new Error("Trades request failed");
+        const data = (await response.json()) as { trades: DexTrade[] };
+        if (!disposed) setTrades(data.trades ?? []);
+      } catch {
+        if (!disposed) setTrades([]);
+      } finally {
+        if (!disposed) setTradesLoading(false);
+      }
+    }
+
+    loadTrades();
+    const timer = window.setInterval(loadTrades, 30000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [marketId]);
 
   const ohlcText = useMemo(() => {
-    if (!latestCandle) return "Waiting for BTC feed";
+    if (!latestCandle) return "Waiting for market feed";
 
     const delta = latestCandle.close - latestCandle.open;
     const percent = latestCandle.open ? (delta / latestCandle.open) * 100 : 0;
@@ -486,21 +494,21 @@ export function Chart() {
           <ChevronLeft className="h-4 w-4" />
         </button>
         <div className="flex items-center gap-2 shrink-0">
-          <div className="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center">
-            <Bitcoin className="h-5 w-5 text-white" />
+          <div className="h-8 w-8 rounded-full bg-violet-500 flex items-center justify-center text-xs font-bold text-white">
+            {stats.symbol.slice(0, 2)}
           </div>
-          <span className="text-xl font-semibold">BTC</span>
+          <span className="text-xl font-semibold">{stats.symbol}</span>
           <button className="ml-2 text-xs px-2.5 py-1 rounded-md bg-panel text-foreground hover:bg-panel-hover border border-border">
             Follow
           </button>
         </div>
         <div className="grid grid-cols-3 gap-3 flex-1 min-w-0">
           <Stat label="Mark" value={stats.mark ? formatUsd(stats.mark) : "..."} />
-          <Stat label="Index" value={stats.index ? formatUsd(stats.index) : "..."} />
+          <Stat label="Liquidity" value={stats.liquidity ? formatUsd(stats.liquidity) : "..."} />
           <Stat
-            label="Funding"
-            value={formatPercent(stats.fundingRate)}
-            valueClass={stats.fundingRate >= 0 ? "text-bull" : "text-bear"}
+            label="24h Change"
+            value={formatSignedPercent(stats.changePercent)}
+            valueClass={stats.changePercent >= 0 ? "text-bull" : "text-bear"}
           />
         </div>
       </div>
@@ -575,7 +583,7 @@ export function Chart() {
 
         <div className="absolute left-3 top-2 text-xs pointer-events-none">
           <div className="text-foreground">
-            BTCUSDT · {interval} · Binance <span className={status === "live" ? "text-bull" : "text-bear"}>●</span>
+            {stats.pairLabel} · {interval} · {stats.dex} <span className={status === "live" ? "text-bull" : "text-bear"}>●</span>
           </div>
           <div className="tabular mt-1 text-muted-foreground">{ohlcText}</div>
           <div className="mt-1 text-muted-foreground">
@@ -583,9 +591,6 @@ export function Chart() {
           </div>
         </div>
 
-        <button className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-3 bg-primary/30 rounded-r flex items-center justify-center">
-          <ChevronRight className="h-3 w-3 text-primary" />
-        </button>
       </div>
 
       <div className="flex items-center gap-3 px-3 h-10 border-t border-border text-xs text-muted-foreground">
@@ -605,7 +610,7 @@ export function Chart() {
 
       <div className="border-t border-border">
         <div className="grid grid-cols-4 text-sm">
-          {["Positions (0)", "Trades", "Funding", "Order History"].map((t) => (
+          {["Positions (0)", "Swaps", "Pool", "Receipts"].map((t) => (
             <button
               key={t}
               onClick={() => setBottomTab(t)}
@@ -617,7 +622,7 @@ export function Chart() {
             </button>
           ))}
         </div>
-        <BottomPanel activeTab={bottomTab} stats={stats} />
+        <BottomPanel activeTab={bottomTab} stats={stats} trades={trades} tradesLoading={tradesLoading} explorerBase={explorerBase} />
       </div>
     </div>
   );
@@ -632,24 +637,107 @@ function Stat({ label, value, valueClass = "" }: { label: string; value: string;
   );
 }
 
-function BottomPanel({ activeTab, stats }: { activeTab: string; stats: BtcStats }) {
-  if (activeTab === "Funding") {
+function BottomPanel({
+  activeTab,
+  stats,
+  trades,
+  tradesLoading,
+  explorerBase,
+}: {
+  activeTab: string;
+  stats: BtcStats;
+  trades: DexTrade[];
+  tradesLoading: boolean;
+  explorerBase: string;
+}) {
+  const { openConnectModal } = useConnectModal();
+  const { isConnected } = useAccount();
+
+  if (activeTab === "Pool") {
     return (
       <div className="h-48 grid grid-cols-3 gap-px bg-border/50 text-sm">
-        <FundingCell label="Funding Rate" value={formatPercent(stats.fundingRate)} tone={stats.fundingRate >= 0 ? "text-bull" : "text-bear"} />
-        <FundingCell label="Next Funding" value={stats.nextFundingTime ? formatFundingTime(stats.nextFundingTime) : "..."} />
-        <FundingCell label="Index Price" value={stats.index ? formatUsd(stats.index) : "..."} />
+        <FundingCell label="Pool Liquidity" value={stats.liquidity ? formatUsd(stats.liquidity) : "..."} />
+        <FundingCell label="Network" value={stats.networkName} />
+        <FundingCell label="Depth Model" value="AMM curve" />
       </div>
     );
   }
 
-  if (activeTab === "Trades") {
+  if (activeTab === "Swaps") {
     return (
-      <div className="h-48 grid grid-cols-4 text-sm">
-        <BottomHeader label="Pair" value="BTCUSDT" />
-        <BottomHeader label="Mark" value={stats.mark ? formatUsd(stats.mark) : "..."} />
-        <BottomHeader label="24h Change" value={`${stats.changePercent >= 0 ? "+" : ""}${stats.changePercent.toFixed(2)}%`} tone={stats.changePercent >= 0 ? "text-bull" : "text-bear"} />
-        <BottomHeader label="24h Volume" value={stats.volume ? formatUsd(stats.volume) : "..."} />
+      <div className="h-48 overflow-y-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-background border-b border-border">
+            <tr className="text-muted-foreground">
+              <th className="text-left px-3 py-1.5 font-medium">Side</th>
+              <th className="text-right px-3 py-1.5 font-medium">Price</th>
+              <th className="text-right px-3 py-1.5 font-medium">Amount</th>
+              <th className="text-right px-3 py-1.5 font-medium">Value</th>
+              <th className="text-right px-3 py-1.5 font-medium">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tradesLoading && trades.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-6 text-muted-foreground">
+                  Loading trades…
+                </td>
+              </tr>
+            ) : trades.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-6 text-muted-foreground">
+                  No recent trades
+                </td>
+              </tr>
+            ) : (
+              trades.map((trade) => (
+                <tr
+                  key={trade.id}
+                  className="border-b border-border/30 hover:bg-panel/50 transition-colors"
+                >
+                  <td className={`px-3 py-1.5 font-semibold ${trade.side === "buy" ? "text-bull" : "text-bear"}`}>
+                    {trade.side === "buy" ? "BUY" : "SELL"}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-foreground">
+                    {formatCompactNumber(trade.priceUsd)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-muted-foreground">
+                    {formatVolume(trade.size)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-muted-foreground">
+                    {formatUsd(trade.volumeUsd)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular text-muted-foreground">
+                    {trade.txHash ? (
+                      <a
+                        href={`${explorerBase}/tx/${trade.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary transition-colors"
+                        title={new Date(trade.timestamp).toLocaleString()}
+                      >
+                        {formatRelativeTime(trade.timestamp)}
+                      </a>
+                    ) : (
+                      <span title={new Date(trade.timestamp).toLocaleString()}>
+                        {formatRelativeTime(trade.timestamp)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <div className="h-48 flex flex-col items-center justify-center gap-2">
+        <div className="text-sm text-muted-foreground">No open positions</div>
+        <div className="text-xs text-muted-foreground/60">Positions will appear here once you trade</div>
       </div>
     );
   }
@@ -657,7 +745,10 @@ function BottomPanel({ activeTab, stats }: { activeTab: string; stats: BtcStats 
   return (
     <div className="h-48 flex flex-col items-center justify-center gap-3">
       <div className="text-sm text-muted-foreground">No wallet detected</div>
-      <button className="px-6 h-9 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium hover:bg-primary/25 transition-colors">
+      <button
+        onClick={openConnectModal}
+        className="px-6 h-9 rounded-full bg-primary/15 border border-primary/30 text-primary text-sm font-medium hover:bg-primary/25 transition-colors"
+      >
         Connect Wallet
       </button>
     </div>
@@ -669,15 +760,6 @@ function FundingCell({ label, value, tone = "text-foreground" }: { label: string
     <div className="bg-background flex flex-col justify-center px-4">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className={`mt-2 text-lg tabular ${tone}`}>{value}</span>
-    </div>
-  );
-}
-
-function BottomHeader({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="flex flex-col justify-center px-4 border-r border-border">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`mt-2 tabular ${tone}`}>{value}</span>
     </div>
   );
 }
@@ -742,25 +824,14 @@ function activeIndicatorCount(indicators: Record<IndicatorName, boolean>) {
   return Object.values(indicators).filter(Boolean).length;
 }
 
-function toCandle(kline: BinanceKline): BtcCandle {
+function toCandle(candle: DexCandle): BtcCandle {
   return {
-    time: Math.floor(kline[0] / 1000) as UTCTimestamp,
-    open: Number(kline[1]),
-    high: Number(kline[2]),
-    low: Number(kline[3]),
-    close: Number(kline[4]),
-    volume: Number(kline[5]),
-  };
-}
-
-function toLiveCandle(message: BinanceKlineMessage): BtcCandle {
-  return {
-    time: Math.floor(message.k.t / 1000) as UTCTimestamp,
-    open: Number(message.k.o),
-    high: Number(message.k.h),
-    low: Number(message.k.l),
-    close: Number(message.k.c),
-    volume: Number(message.k.v),
+    time: candle.time as UTCTimestamp,
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+    volume: candle.volume,
   };
 }
 
@@ -770,19 +841,6 @@ function toVolume(candle: BtcCandle): HistogramData<UTCTimestamp> {
     value: candle.volume,
     color: candle.close >= candle.open ? "hsl(164 80% 54% / 0.42)" : "hsl(0 72% 71% / 0.42)",
   };
-}
-
-function upsertCandle(candles: BtcCandle[], candle: BtcCandle) {
-  const next = candles.slice();
-  const last = next[next.length - 1];
-
-  if (!last || candle.time > last.time) {
-    next.push(candle);
-  } else if (candle.time === last.time) {
-    next[next.length - 1] = candle;
-  }
-
-  return next.slice(-HISTORY_LIMIT);
 }
 
 function calculateSma(candles: BtcCandle[], period: number): LineData<UTCTimestamp>[] {
@@ -987,26 +1045,25 @@ function formatUsd(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: Math.abs(value) >= 1000000 ? 0 : 2,
+    maximumFractionDigits: fractionDigitsForPrice(value),
   }).format(value);
 }
 
-function formatPercent(value: number) {
-  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(4)}%`;
+function formatRelativeTime(timestamp: string): string {
+  const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
 }
 
-function formatFundingTime(value: number) {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(value);
+function formatSignedPercent(value: number) {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
 function formatCompactNumber(value: number) {
   return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
+    maximumFractionDigits: fractionDigitsForPrice(value),
   }).format(value);
 }
 
@@ -1015,4 +1072,15 @@ function formatVolume(value: number) {
     notation: "compact",
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+function fractionDigitsForPrice(value: number) {
+  const absolute = Math.abs(value);
+
+  if (absolute >= 1000000) return 0;
+  if (absolute >= 1000) return 1;
+  if (absolute >= 1) return 2;
+  if (absolute >= 0.01) return 4;
+  if (absolute >= 0.0001) return 6;
+  return 8;
 }

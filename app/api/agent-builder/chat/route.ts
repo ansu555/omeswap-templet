@@ -15,7 +15,7 @@ function getOpenAIClient() {
     defaultHeaders: {
       "HTTP-Referer":
         process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-      "X-Title": "Omeswap Agent Builder",
+      "X-Title": "Omega Agent Builder",
     },
   });
 }
@@ -38,6 +38,8 @@ const AgentBlockSchema = z.object({
 const BlockConnectionSchema = z.object({
   sourceIndex: z.number(),
   targetIndex: z.number(),
+  sourceHandle: z.string().optional(),
+  targetHandle: z.string().optional(),
   type: z.enum(["default", "conditional", "error"]).optional(),
 });
 
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
       {
         role: "system",
         content: `You are an expert trading bot builder assistant for a DEX (Decentralized Exchange). 
-Help users create automated trading strategies on Avalanche (AVAX) using visual blocks on a flow canvas.
+Help users create automated trading strategies on Omega and 0G using visual blocks on a flow canvas.
 
 AVAILABLE NODE TYPES (use these exact values for the "type" field):
 DATA SOURCES:
@@ -96,7 +98,7 @@ CRITICAL RULES:
 - For stop-loss / take-profit, use type "condition" with threshold parameters
 
 When creating blocks, include relevant parameters:
-- token/pair: Token symbol (e.g., "AVAX", "ETH", "USDC")
+- token/pair: Token symbol (e.g., "W0G", "ETH", "USDC")
 - amount: Number amount
 - price/threshold: Price or threshold value
 - interval/period: Time interval or period
@@ -114,28 +116,35 @@ Example block:
 {
   "type": "swap",
   "subType": "buy",
-  "label": "Buy AVAX",
-  "description": "Swap USDC for AVAX",
+  "label": "Buy W0G",
+  "description": "Swap USDC for W0G",
   "parameters": [
     {"name": "tokenIn", "value": "USDC", "type": "text"},
-    {"name": "tokenOut", "value": "AVAX", "type": "text"},
+    {"name": "tokenOut", "value": "W0G", "type": "text"},
     {"name": "amount", "value": 100, "type": "number"}
   ]
 }
 
 Example connections (linking blocks by their index in the blocks array):
 [
-  {"sourceIndex": 0, "targetIndex": 1, "type": "default"},
-  {"sourceIndex": 1, "targetIndex": 2, "type": "default"}
+  {"sourceIndex": 0, "sourceHandle": "price", "targetIndex": 1, "targetHandle": "value", "type": "default"},
+  {"sourceIndex": 2, "sourceHandle": "balance", "targetIndex": 1, "targetHandle": "threshold", "type": "default"},
+  {"sourceIndex": 1, "sourceHandle": "true", "targetIndex": 3, "targetHandle": "signal", "type": "default"}
 ]
 
-CRITICAL: When creating multiple blocks, ALWAYS include connections to link them in order!
-For a DCA bot: start → schedule_trigger → swap (buy) → condition (stop loss)
-For a grid strategy: start → price_feed → condition (grid levels) → swap
+CRITICAL: When creating multiple blocks, ALWAYS include connections with both sourceHandle and targetHandle.
+- Use the actual handle names from the nodes, such as "price", "balance", "value", "threshold", "true", "false", "signal", "txHash", or "signal_out".
+- Data nodes like "dex_price", "price_feed", and "wallet_balance" do not need a trigger input. Connect their outputs into logic/action nodes.
+- "schedule_trigger" is usually the entry signal for actions, conditions, merge nodes, or other signal-driven flow.
+- Do not create circular connections. The execution engine requires an acyclic graph.
+
+Valid examples:
+- Price threshold trade: dex_price.price -> condition.value, wallet_balance.balance -> condition.threshold, condition.true -> swap.signal
+- Two-step execution: swap_1.txHash -> delay.signal, delay.signal_out -> swap_2.signal
 
 Respond with helpful explanations and generate appropriate blocks when users ask to create strategies.
 If user asks for a complete strategy, provide 3-6 connected blocks that form a working flow.
-This is an Avalanche DeFi app — default to AVAX-related tokens.`,
+This is an Omega DeFi app on 0G — default to W0G/USDC strategies when the user does not specify a pair.`,
       },
     ];
 

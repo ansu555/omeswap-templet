@@ -1,5 +1,6 @@
 export { NetWorthCard } from './NetWorthCard';
 export { AgentWalletCard } from './AgentWalletCard';
+export { AgentSettingsCard } from './AgentSettingsCard';
 export { PortfolioSummary } from './PortfolioSummary';
 export { PortfolioTable, type PortfolioRow } from './PortfolioTable';
 export { TokenChip } from './TokenChip';

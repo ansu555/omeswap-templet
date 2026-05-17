@@ -77,14 +77,22 @@ export class SwapNode extends BaseNode {
     inputs: Record<string, unknown>,
     context: ExecutionContext
   ): Promise<Record<string, unknown>> {
-    if (!inputs.signal) return { txHash: null }
+    if (!inputs.signal) {
+      context.addLog('[Swap] Skipped: no execution signal received', 'warn')
+      return { txHash: null }
+    }
     if (!context.signer || !context.walletAddress) throw new Error('Wallet not connected')
 
     const dex = (this.config.dex as string) || _dexNames[0]
     const tokenIn = (this.config.tokenIn as string) || _nativeSymbol
     const tokenOut = (this.config.tokenOut as string) || 'USDC.e'
-    const amountIn = (this.config.amountIn as number) || 0.1
+    const configuredAmount = this.config.amountIn ?? this.config.amount ?? 0.1
+    const amountIn = Number(configuredAmount)
     const slippage = (this.config.slippage as number) || 0.5
+
+    if (!Number.isFinite(amountIn) || amountIn <= 0) {
+      throw new Error('Swap amount must be greater than 0')
+    }
 
     const routerEntry = _v1Routers.find((r) => r.name === dex)
     if (!routerEntry) throw new Error(`Unknown DEX: ${dex}`)

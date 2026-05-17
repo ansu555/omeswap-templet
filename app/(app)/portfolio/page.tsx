@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NetWorthCard } from "@/components/portfolio/NetWorthCard";
 import { AgentWalletCard } from "@/components/portfolio/AgentWalletCard";
+import { AgentSettingsCard } from "@/components/portfolio/AgentSettingsCard";
 import { TokenHoldingRow } from "@/components/portfolio/TokenHoldingRow";
 import { PortfolioSummary } from "@/components/portfolio/PortfolioSummary";
 import {
@@ -67,11 +68,26 @@ const generateChartData = (
 };
 
 export default function Index() {
-  const { address, isConnected, balance } = useAvalancheWallet();
+  const { address, isConnected } = useAvalancheWallet();
   const { balances } = useTokenBalances(address);
   const [selectedTokenIds, setSelectedTokenIds] = useState<Set<string>>(
     new Set(),
   );
+
+  // Auto-initialize agent wallet on first portfolio visit
+  useEffect(() => {
+    if (!address) return;
+    fetch("/api/agent-wallet", {
+      method: "POST",
+      headers: {
+        "x-wallet-address": address,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    }).catch(() => {
+      // silently ignore — card handles retry
+    });
+  }, [address]);
   const [hideDust, setHideDust] = useState(false);
   const [mergeChains, setMergeChains] = useState(true);
   const [tokenPrices, setTokenPrices] = useState<
@@ -246,19 +262,6 @@ export default function Index() {
     );
   }, [selectedTokenIds, tokens]);
 
-  // Calculate native AVAX balance in USD
-  const avaxBalanceUsd = useMemo(() => {
-    if (!balance) return 0;
-    const avaxPrice = tokenPrices["WAVAX"]?.price || 0;
-    const avaxAmount = parseFloat(balance.formatted);
-    return avaxAmount * avaxPrice;
-  }, [balance, tokenPrices]);
-
-  // Format wallet address for display
-  const shortAddress = address
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : "";
-
   // Show loading or connect wallet message
   if (!isConnected) {
     return (
@@ -313,23 +316,20 @@ export default function Index() {
     <div className="min-h-screen pt-24">
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Top Row - Net Worth & Agent Wallet */}
+        {/* Top Row — Net Worth | Agent Wallet | Agent Settings */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          <div className="lg:col-span-2 h-full">
+          <div className="h-full">
             <NetWorthCard
               netWorthUsd={totalPortfolioValue}
               change24hPercent={avgChange24h}
               chartData={chartData}
             />
           </div>
-          <div className="lg:col-span-1 h-full">
-            <AgentWalletCard
-              walletName="Connected Wallet"
-              balanceUsd={avaxBalanceUsd}
-              walletAddress={shortAddress}
-              onRecharge={() => console.log("Recharge")}
-              onRefresh={() => console.log("Refresh")}
-            />
+          <div className="h-full">
+            <AgentWalletCard />
+          </div>
+          <div className="h-full">
+            <AgentSettingsCard />
           </div>
         </div>
 

@@ -3,20 +3,10 @@
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "./logo";
-import { Compass, ArrowLeftRight, Wallet, Receipt, Bot, Store, Library } from "lucide-react";
 import { gsap } from "gsap";
 import { WalletConnect } from "@/components/features/wallet";
 import { NavBar } from "@/components/ui/nav-bar";
-
-const navItems = [
-  { name: "Explore", url: "/explore", icon: Compass },
-  { name: "Trade", url: "/trade", icon: ArrowLeftRight },
-  { name: "Portfolio", url: "/portfolio", icon: Wallet },
-  { name: "Marketplace", url: "/marketplace", icon: Store },
-  { name: "Library", url: "/library", icon: Library },
-  { name: "Agent", url: "/agent-builder", icon: Bot },
-  { name: "Txns", url: "/transactions", icon: Receipt },
-];
+import { APP_NAV_ITEMS } from "@/components/layout/nav-items";
 
 export const Header = () => {
   const logoRef = useRef<HTMLAnchorElement>(null);
@@ -37,28 +27,28 @@ export const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="relative max-w-7xl mx-auto px-6 py-4">
-        <nav className="flex items-center justify-between">
+        <nav className="flex items-center gap-4">
           {/* Logo */}
           <Link
             href="/"
             ref={logoRef}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
           >
             <Logo />
           </Link>
 
-          {/* Center Navigation - New Lamp NavBar */}
-          <div className="hidden md:block absolute left-1/2 -translate-x-1/2">
-            <NavBar items={navItems} />
+          {/* Center Navigation */}
+          <div className="hidden md:flex flex-1 justify-center min-w-0 overflow-hidden">
+            <NavBar items={APP_NAV_ITEMS} />
           </div>
 
           {/* Right Section - Connect Wallet */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center shrink-0">
             <WalletConnect />
           </div>
 
           {/* Mobile Menu Button */}
-          <button className="md:hidden flex flex-col gap-1.5 p-2">
+          <button className="md:hidden ml-auto flex flex-col gap-1.5 p-2">
             <span className="w-5 h-0.5 bg-white rounded-full" />
             <span className="w-5 h-0.5 bg-white rounded-full" />
           </button>
@@ -67,7 +57,7 @@ export const Header = () => {
 
       {/* Mobile Bottom NavBar */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 mb-6 md:hidden">
-        <NavBar items={navItems} />
+        <NavBar items={APP_NAV_ITEMS} />
       </div>
     </header>
   );

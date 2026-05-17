@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/0g-contract/node_modules
 /.venv
 /.pnp
 .pnp.js
@@ -39,3 +40,9 @@ next-env.d.ts
 # graphify outputs - ignore extraction cache folders everywhere
 **/graphify-out/cache/
 .graphify-runs/*/cache/
+
+# local AXL demo/tooling artifacts
+.axl/
+.tooling/
+.gocache/
+.gopath/
