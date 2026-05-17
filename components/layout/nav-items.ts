@@ -26,4 +26,5 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
   { name: "Marketplace", url: "/marketplace", icon: Store },
   { name: "Txns", url: "/transactions", icon: Receipt },
   { name: "Builder", url: "/agent-builder", icon: Cpu },
+  { name: "Research", url: "/research", icon: BookOpen },
 ];
