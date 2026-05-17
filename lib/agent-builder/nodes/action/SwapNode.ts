@@ -146,15 +146,23 @@ export class SwapNode extends BaseNode {
     inputs: Record<string, unknown>,
     context: ExecutionContext,
   ): Promise<Record<string, unknown>> {
-    if (!inputs.signal) return { txHash: null };
+    if (!inputs.signal) {
+      context.addLog("[Swap] Skipped: no execution signal received", "warn");
+      return { txHash: null };
+    }
     if (!context.signer || !context.walletAddress)
       throw new Error("Wallet not connected");
 
     const dex = (this.config.dex as string) || _defaultDex;
     const tokenIn = normalizeTokenKey((this.config.tokenIn as string) || "USDC");
     const tokenOut = normalizeTokenKey((this.config.tokenOut as string) || "W0G");
-    const amountIn = (this.config.amountIn as number) || 0.1;
+    const configuredAmount = this.config.amountIn ?? this.config.amount ?? 0.1;
+    const amountIn = Number(configuredAmount);
     const slippage = (this.config.slippage as number) || 0.5;
+
+    if (!Number.isFinite(amountIn) || amountIn <= 0) {
+      throw new Error("Swap amount must be greater than 0");
+    }
 
     const outToken = _config.tokens[tokenOut];
     if (!outToken) throw new Error(`Unknown token out: ${tokenOut}`);

@@ -105,7 +105,9 @@ function AgentBuilderContent() {
             .map((c, i) => ({
               id: `e-${Date.now()}-${i}`,
               source: blockIdToNodeId[c.source] || "",
+              sourceHandle: c.sourceHandle,
               target: blockIdToNodeId[c.target] || "",
+              targetHandle: c.targetHandle,
               animated: true,
               type: "default" as const,
             }))

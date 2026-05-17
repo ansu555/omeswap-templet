@@ -156,7 +156,19 @@ export async function sealStrategyPayload(
   const plaintext = JSON.stringify(payload)
   const encryptedBlob = encrypt(plaintext)
 
-  const { rootHash, txHash } = await uploadToStorage(encryptedBlob)
+  let rootHash: string
+  let txHash: string | undefined
+
+  try {
+    const result = await uploadToStorage(encryptedBlob)
+    rootHash = result.rootHash
+    txHash = result.txHash
+  } catch {
+    // 0G Storage unavailable (no signer, network down, etc.)
+    // Fall back to inline storage: encode the encrypted blob in the rootHash itself.
+    // unsealStrategyPayload detects the "inline:" prefix and skips the 0G download.
+    rootHash = `inline:${Buffer.from(encryptedBlob).toString('base64')}`
+  }
 
   const markerPayload: EncryptedPayloadMarker = { encrypted: true, rootHash }
 
@@ -180,6 +192,10 @@ export async function sealStrategyPayload(
 export async function unsealStrategyPayload(
   rootHash: string,
 ): Promise<StrategyDraftPayload> {
+  if (rootHash.startsWith('inline:')) {
+    const blob = Buffer.from(rootHash.slice(7), 'base64')
+    return JSON.parse(decrypt(blob)) as StrategyDraftPayload
+  }
   const { data } = await downloadFromStorage(rootHash)
   const plaintext = decrypt(data)
   return JSON.parse(plaintext) as StrategyDraftPayload
