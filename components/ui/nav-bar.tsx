@@ -11,6 +11,7 @@ interface NavItem {
   name: string;
   url: string;
   icon: LucideIcon;
+  disabled?: boolean;
 }
 
 interface NavBarProps {
@@ -39,6 +40,21 @@ export function NavBar({ items, className }: NavBarProps) {
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.name;
+
+          if (item.disabled) {
+            return (
+              <span
+                key={item.name}
+                className="relative text-xs font-semibold px-3.5 py-2 rounded-full whitespace-nowrap cursor-not-allowed text-foreground/30 select-none"
+                title="Coming soon"
+              >
+                <span className="hidden md:inline">{item.name}</span>
+                <span className="md:hidden">
+                  <Icon size={18} strokeWidth={2.5} />
+                </span>
+              </span>
+            );
+          }
 
           return (
             <Link
