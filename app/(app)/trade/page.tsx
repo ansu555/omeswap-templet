@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { PoolComparisonPanel } from "@/components/trade/PoolComparisonPanel";
 import { SwapCardDex } from "@/components/trade/SwapCardDex";
 
 export default function TradePage() {
+  const [tokenIn, setTokenIn] = useState("OmE");
+  const [tokenOut, setTokenOut] = useState("USDO");
+
   return (
     <div className="min-h-screen bg-transparent relative z-10">
       <main className="container mx-auto px-4 py-8 pt-28">
@@ -13,9 +17,9 @@ export default function TradePage() {
               <h1 className="text-2xl font-semibold">Trade</h1>
               <p className="text-sm text-muted-foreground">Jaine on 0G</p>
             </div>
-            <SwapCardDex />
+            <SwapCardDex onTokensChange={(i, o) => { setTokenIn(i); setTokenOut(o); }} />
           </section>
-          <PoolComparisonPanel />
+          <PoolComparisonPanel token0Symbol={tokenIn} token1Symbol={tokenOut} />
         </div>
       </main>
     </div>

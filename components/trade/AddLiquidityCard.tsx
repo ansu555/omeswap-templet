@@ -15,10 +15,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function AddLiquidityCard() {
+interface AddLiquidityCardProps {
+  onTokensChange?: (t0: string, t1: string) => void;
+}
+
+export function AddLiquidityCard({ onTokensChange }: AddLiquidityCardProps) {
   const { isConnected, chain } = useWallet();
-  const [token0Symbol, setToken0Symbol] = useState<string>('W0G');
-  const [token1Symbol, setToken1Symbol] = useState<string>('USDC');
+  const [token0Symbol, setToken0Symbol] = useState<string>('OmE');
+  const [token1Symbol, setToken1Symbol] = useState<string>('USDO');
 
   const {
     amount0,
@@ -116,7 +120,10 @@ export function AddLiquidityCard() {
         <div className="grid grid-cols-2 gap-2 mb-4">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Token 1</label>
-            <Select value={token0Symbol} onValueChange={setToken0Symbol}>
+            <Select
+              value={token0Symbol}
+              onValueChange={(v) => { setToken0Symbol(v); onTokensChange?.(v, token1Symbol); }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -131,7 +138,10 @@ export function AddLiquidityCard() {
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Token 2</label>
-            <Select value={token1Symbol} onValueChange={setToken1Symbol}>
+            <Select
+              value={token1Symbol}
+              onValueChange={(v) => { setToken1Symbol(v); onTokensChange?.(token0Symbol, v); }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

@@ -24,6 +24,10 @@ import { JAINE_DEX_ID } from "@/lib/dex/jaine";
 
 type SwapMode = "swap" | "limit" | "buy" | "sell";
 
+interface SwapCardDexProps {
+  onTokensChange?: (tokenIn: string, tokenOut: string) => void;
+}
+
 const DEX_LABEL_COLORS: Record<string, string> = {
   [JAINE_DEX_ID]: "text-primary",
   zerog_dex: "text-violet-300",
@@ -41,7 +45,7 @@ const DEX_LABELS: Record<string, { name: string; color: string }> =
 const DEFAULT_CHAIN_ID = getDefaultChainId();
 const DEFAULT_CHAIN_NAME = getChainConfig(DEFAULT_CHAIN_ID).chain.name;
 
-export function SwapCardDex() {
+export function SwapCardDex({ onTokensChange }: SwapCardDexProps) {
   const { isConnected, chain, address, switchChain } = useWallet();
 
   const [mode, setMode] = useState<SwapMode>("swap");
@@ -75,22 +79,32 @@ export function SwapCardDex() {
   const receiveToken = TOKEN_ADDRESSES[tokenOut] ?? TOKEN_LIST[1];
 
   const handleSwapDirection = () => {
-    setTokenIn(tokenOut);
-    setTokenOut(tokenIn);
+    const newIn = tokenOut;
+    const newOut = tokenIn;
+    setTokenIn(newIn);
+    setTokenOut(newOut);
     setAmountIn('');
+    onTokensChange?.(newIn, newOut);
   };
 
   const handleTokenSelect = (symbol: string, type: "pay" | "receive") => {
+    let newIn = tokenIn;
+    let newOut = tokenOut;
     if (type === "pay") {
-      if (symbol === tokenOut) setTokenOut(tokenIn);
-      setTokenIn(symbol);
+      if (symbol === tokenOut) newOut = tokenIn;
+      newIn = symbol;
+      setTokenOut(newOut);
+      setTokenIn(newIn);
       setIsPayTokenOpen(false);
     } else {
-      if (symbol === tokenIn) setTokenIn(tokenOut);
-      setTokenOut(symbol);
+      if (symbol === tokenIn) newIn = tokenOut;
+      newOut = symbol;
+      setTokenIn(newIn);
+      setTokenOut(newOut);
       setIsReceiveTokenOpen(false);
     }
     setAmountIn('');
+    onTokensChange?.(newIn, newOut);
   };
 
   const hasValidAmount = amountIn && parseFloat(amountIn) > 0;
@@ -212,7 +226,8 @@ export function SwapCardDex() {
               onClick={() => setMode(m)}
               className={cn(
                 "mode-tab capitalize whitespace-nowrap",
-                mode === m ? "mode-tab-active" : "mode-tab-inactive"
+                mode === m ? "mode-tab-active" : "mode-tab-inactive",
+                m !== "swap" && "opacity-40 cursor-not-allowed"
               )}
               disabled={m !== "swap"}
             >
