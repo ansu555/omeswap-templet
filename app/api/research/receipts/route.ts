@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
           'ticker',
           'created_at',
           'trigger_type',
+          'query',
           'chain_id',
           'tx_hash',
           'storage_root_hash',
@@ -55,6 +56,8 @@ export async function GET(req: NextRequest) {
           'causal_chain',
           'risk_sizing',
           'consensus',
+          'research_brief',
+          'proof_ref',
         ].join(', '),
         { count: 'exact' },
       )

@@ -280,5 +280,10 @@ function emitRiskDone(
     ts: new Date().toISOString(),
     agent: 'risk',
     message: vote.vetoed ? `Risk agent VETOED: ${vote.rationale}` : `Risk agent: ${vote.vote}`,
+    payload: {
+      vote: vote.vote,
+      confidence: vote.confidence,
+      vetoed: vote.vetoed ?? false,
+    },
   })
 }

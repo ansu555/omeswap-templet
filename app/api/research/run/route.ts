@@ -6,7 +6,8 @@
  * Request body (JSON):
  *   {
  *     query             : string  — User's natural-language query (required)
- *     ticker?           : string  — Asset ticker; extracted from query if omitted
+ *     ticker?           : string  — Asset ticker; if omitted, query must resolve
+ *                                   to exactly one primary token
  *     mode?             : Mode    — Trading mode override; falls back to user_settings
  *     chainId?          : number  — Chain override (default: 0G Newton, 16600)
  *     executionApproved?: boolean — Assisted-mode: user has approved execution
@@ -17,7 +18,7 @@
  *   Stream closes after `run.done` or `run.error`.
  *
  * Post-run: receipt blob is uploaded to 0G Storage (best-effort);
- *   storage_root_hash is back-filled in decision_receipts if upload succeeds.
+ *   storage_root_hash is back-filled in ats_receipts if upload succeeds.
  *
  * Auth: x-wallet-address header (requireWallet helper).
  */
@@ -42,27 +43,92 @@ const VALID_MODES: Mode[] = ['autonomous', 'assisted', 'solo']
 const VALID_TRANSPORTS: AxlTransport[] = ['local', 'axl', 'auto']
 
 /**
- * Ordered list of known tickers used to extract a ticker from a free-text query
- * when the caller doesn't provide one explicitly.
+ * Known token aliases used to resolve a single primary ticker from a query when
+ * the caller doesn't pass one explicitly.
  */
-const KNOWN_TICKERS = [
-  'W0G', '0G',
-  'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'DOGE', 'DOT', 'MATIC',
-  'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'NEAR', 'APT', 'ARB', 'OP', 'INJ',
-  'SUI', 'SEI', 'TIA', 'RNDR', 'PEPE', 'WIF', 'BONK', 'JUP', 'PYTH',
-  'SHIB', 'TRX', 'TON', 'FTM', 'CRV', 'AAVE',
+const TOKEN_ALIASES: Array<{ canonical: string; terms: string[] }> = [
+  { canonical: 'W0G', terms: ['W0G', '0G', 'ZEROG'] },
+  { canonical: 'BTC', terms: ['BTC', 'BITCOIN'] },
+  { canonical: 'ETH', terms: ['ETH', 'ETHEREUM'] },
+  { canonical: 'SOL', terms: ['SOL', 'SOLANA'] },
+  { canonical: 'BNB', terms: ['BNB', 'BINANCE'] },
+  { canonical: 'XRP', terms: ['XRP', 'RIPPLE'] },
+  { canonical: 'ADA', terms: ['ADA', 'CARDANO'] },
+  { canonical: 'AVAX', terms: ['AVAX', 'AVALANCHE'] },
+  { canonical: 'DOGE', terms: ['DOGE', 'DOGECOIN'] },
+  { canonical: 'DOT', terms: ['DOT', 'POLKADOT'] },
+  { canonical: 'MATIC', terms: ['MATIC', 'POLYGON'] },
+  { canonical: 'LINK', terms: ['LINK', 'CHAINLINK'] },
+  { canonical: 'UNI', terms: ['UNI', 'UNISWAP'] },
+  { canonical: 'ATOM', terms: ['ATOM', 'COSMOS'] },
+  { canonical: 'LTC', terms: ['LTC', 'LITECOIN'] },
+  { canonical: 'BCH', terms: ['BCH', 'BITCOIN CASH'] },
+  { canonical: 'NEAR', terms: ['NEAR'] },
+  { canonical: 'APT', terms: ['APT', 'APTOS'] },
+  { canonical: 'ARB', terms: ['ARB', 'ARBITRUM'] },
+  { canonical: 'OP', terms: ['OP', 'OPTIMISM'] },
+  { canonical: 'INJ', terms: ['INJ', 'INJECTIVE'] },
+  { canonical: 'SUI', terms: ['SUI'] },
+  { canonical: 'SEI', terms: ['SEI'] },
+  { canonical: 'TIA', terms: ['TIA', 'CELESTIA'] },
+  { canonical: 'RNDR', terms: ['RNDR', 'RENDER'] },
+  { canonical: 'PEPE', terms: ['PEPE'] },
+  { canonical: 'WIF', terms: ['WIF'] },
+  { canonical: 'BONK', terms: ['BONK'] },
+  { canonical: 'JUP', terms: ['JUP', 'JUPITER'] },
+  { canonical: 'PYTH', terms: ['PYTH'] },
+  { canonical: 'SHIB', terms: ['SHIB', 'SHIBA'] },
+  { canonical: 'TRX', terms: ['TRX', 'TRON'] },
+  { canonical: 'TON', terms: ['TON', 'TONCOIN'] },
+  { canonical: 'FTM', terms: ['FTM', 'FANTOM'] },
+  { canonical: 'CRV', terms: ['CRV', 'CURVE'] },
+  { canonical: 'AAVE', terms: ['AAVE'] },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function extractTicker(query: string): string {
+function extractTickers(query: string): string[] {
   const upper = query.toUpperCase()
-  for (const t of KNOWN_TICKERS) {
-    // Word-boundary match: ticker must not be part of a longer word
-    const re = new RegExp(`(?<![A-Z])${t}(?![A-Z])`)
-    if (re.test(upper)) return t
+  const matches = new Set<string>()
+
+  for (const { canonical, terms } of TOKEN_ALIASES) {
+    for (const term of terms) {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const re = new RegExp(`(?<![A-Z0-9])${escaped}(?![A-Z0-9])`)
+      if (re.test(upper)) {
+        matches.add(canonical)
+        break
+      }
+    }
   }
-  return 'BTC'
+
+  return Array.from(matches)
+}
+
+function resolveRequestedTicker(
+  query: string,
+  explicitTicker?: string,
+): { ok: true; ticker: string } | { ok: false; message: string } {
+  if (explicitTicker?.trim()) {
+    return { ok: true, ticker: explicitTicker.trim().toUpperCase() }
+  }
+
+  const matches = extractTickers(query)
+  if (matches.length === 1) {
+    return { ok: true, ticker: matches[0] }
+  }
+
+  if (matches.length === 0) {
+    return {
+      ok: false,
+      message: 'Your research prompt must mention exactly one token, for example BTC, ETH, SOL, or W0G.',
+    }
+  }
+
+  return {
+    ok: false,
+    message: `Your prompt mentions multiple tokens (${matches.join(', ')}). Ask about exactly one primary token per run.`,
+  }
 }
 
 function makeRunId(): string {
@@ -129,7 +195,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const ticker = body.ticker?.trim().toUpperCase() || extractTicker(query)
+  const tickerResolution = resolveRequestedTicker(query, body.ticker)
+  if (!tickerResolution.ok) {
+    return new Response(
+      JSON.stringify({ error: tickerResolution.message }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
+  const ticker = tickerResolution.ticker
   const chainId =
     typeof body.chainId === 'number' && Number.isFinite(body.chainId)
       ? body.chainId
@@ -203,7 +277,7 @@ export async function POST(req: NextRequest) {
               receipt,
             )
             await supabase
-              .from('decision_receipts')
+              .from('ats_receipts')
               .update({ storage_root_hash: rootHash })
               .eq('id', receipt.id)
           } catch (storageErr) {

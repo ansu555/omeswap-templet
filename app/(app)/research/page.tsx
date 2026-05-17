@@ -6,9 +6,9 @@ import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import dynamic_import from "next/dynamic";
 import ResearchChat from "@/components/research/ResearchChat";
-import DecisionReceiptDrawer from "@/components/research/DecisionReceiptDrawer";
 import { useResearchStore } from "@/store/research";
-import { Loader2, Settings } from "lucide-react";
+import { useChatContext } from "@/components/providers/chat-provider";
+import { Loader2, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 // ── Lazy-load the graph canvas (uses @xyflow/react which is heavy) ─────────────
@@ -17,8 +17,8 @@ const AgentGraphCanvas = dynamic_import(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 size={20} className="text-purple-400 animate-spin" />
+      <div className="flex h-full min-h-[420px] items-center justify-center rounded-[28px] border border-white/10 bg-[#080910]/90">
+        <Loader2 size={20} className="animate-spin text-violet-200" />
       </div>
     ),
   },
@@ -37,9 +37,14 @@ interface UserSettings {
 export default function ResearchPage() {
   const { address } = useAccount();
   const setMode = useResearchStore((s) => s.setMode);
+  const { closeChat } = useChatContext();
 
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
+
+  useEffect(() => {
+    closeChat();
+  }, [closeChat]);
 
   // Load user settings and apply mode to the store
   useEffect(() => {
@@ -63,15 +68,23 @@ export default function ResearchPage() {
   // ── Not connected ───────────────────────────────────────────────────────────
   if (!address) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center px-4 pt-20">
         <div
-          className="rounded-2xl px-10 py-12 text-center max-w-sm"
+          className="max-w-sm rounded-[28px] px-10 py-12 text-center shadow-2xl shadow-black/40"
           style={{
-            background: "rgba(13,13,26,0.95)",
-            border: "1px solid rgba(124,58,237,0.25)",
+            background: "linear-gradient(180deg, rgba(17,17,29,0.98), rgba(8,9,16,0.98))",
+            border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
-          <div className="text-4xl mb-4">🔐</div>
+          <div
+            className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl"
+            style={{
+              background: "rgba(139,92,246,0.14)",
+              border: "1px solid rgba(139,92,246,0.22)",
+            }}
+          >
+            <Sparkles className="h-5 w-5 text-violet-100" />
+          </div>
           <h2 className="text-base font-semibold text-white mb-2">
             Connect Your Wallet
           </h2>
@@ -86,32 +99,36 @@ export default function ResearchPage() {
   // ── Loading settings ────────────────────────────────────────────────────────
   if (settingsLoading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <Loader2 size={24} className="text-purple-400 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center pt-20">
+        <Loader2 size={24} className="animate-spin text-violet-200" />
       </div>
     );
   }
 
   // ── Missing API key / model — redirect banner ────────────────────────────────
-  const missingConfig =
-    settings && (!settings.hasApiKey || !settings.model);
+  const missingConfig = Boolean(
+    settings && (!settings.hasApiKey || !settings.model),
+  );
 
   return (
     <div
-      className="flex flex-col"
-      style={{ height: "100dvh", paddingTop: "64px" }}
+      className="relative flex min-h-screen flex-col overflow-y-auto px-3 pb-3 pt-[72px] sm:px-4 sm:pb-4 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(circle at 24% 18%, rgba(139,92,246,0.13), transparent 30%), radial-gradient(circle at 78% 4%, rgba(45,212,191,0.08), transparent 26%), linear-gradient(135deg, rgba(5,7,13,0.98), rgba(10,10,18,0.98))",
+      }}
     >
       {/* Missing-settings banner */}
       {missingConfig && (
         <div
-          className="flex items-center justify-between gap-3 px-4 py-2 text-[11px]"
+          className="mb-3 flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-[12px] shadow-lg shadow-black/20"
           style={{
-            background: "rgba(234,179,8,0.08)",
-            borderBottom: "1px solid rgba(234,179,8,0.25)",
+            background: "rgba(234,179,8,0.10)",
+            border: "1px solid rgba(234,179,8,0.22)",
           }}
         >
           <div className="flex items-center gap-2 text-amber-300">
-            <Settings size={12} />
+            <Settings size={14} />
             <span>
               Set your OpenRouter API key and model in Portfolio Settings to
               enable full ATS reasoning.
@@ -119,7 +136,7 @@ export default function ResearchPage() {
           </div>
           <Link
             href="/portfolio"
-            className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-medium text-amber-300 hover:text-white transition-colors"
+            className="shrink-0 rounded-xl px-3 py-1.5 text-[11px] font-medium text-amber-200 transition-colors hover:text-white"
             style={{ background: "rgba(234,179,8,0.15)" }}
           >
             Go to Settings
@@ -127,29 +144,15 @@ export default function ResearchPage() {
         </div>
       )}
 
-      {/* 2/3 + 1/3 split */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left — agent graph canvas (2/3) */}
-        <div
-          className="flex-1"
-          style={{
-            background: "linear-gradient(135deg, #080810 0%, #0d0d1a 100%)",
-          }}
-        >
+      <div className="grid flex-1 gap-3 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_440px]">
+        <section className="min-h-[520px] overflow-hidden rounded-[28px] border border-white/10 bg-[#07080f]/95 shadow-2xl shadow-black/[0.35] lg:min-h-0">
           <AgentGraphCanvas />
-        </div>
+        </section>
 
-        {/* Right — research chat (1/3, min 320px) */}
-        <div
-          className="flex-shrink-0 relative"
-          style={{ width: "clamp(320px, 33.333%, 480px)" }}
-        >
+        <section className="min-h-[620px] overflow-hidden rounded-[28px] border border-white/10 bg-[#0d0d17]/[0.98] shadow-2xl shadow-black/[0.35] lg:min-h-0">
           <ResearchChat />
-        </div>
+        </section>
       </div>
-
-      {/* Receipt drawer (portal) */}
-      <DecisionReceiptDrawer />
     </div>
   );
 }

@@ -1,166 +1,39 @@
-/**
- * Research store — Zustand store for the /research page.
- *
- * Holds:
- *  - ReactFlow nodes / edges (the ATS agent graph)
- *  - Chat message list (user + SSE events)
- *  - currentRun / currentReceipt state
- *  - applyEvent() — single dispatcher that updates graph + chat in lockstep
- */
-
 import { create } from 'zustand'
-import type { Node, Edge } from '@xyflow/react'
-import type { RunEvent, DecisionReceipt, AgentName, Mode } from '@/lib/ats/types'
-
-// ── Agent node state ──────────────────────────────────────────────────────────
+import { MarkerType, type Edge, type Node } from '@xyflow/react'
+import type {
+  AgentName,
+  DecisionReceipt,
+  Mode,
+  ResearchBrief,
+  RunEvent,
+} from '@/lib/ats/types'
 
 export type NodeState = 'idle' | 'thinking' | 'done' | 'vetoed'
+export type EdgeState = 'idle' | 'active' | 'complete' | 'veto'
 
 export interface AgentNodeData extends Record<string, unknown> {
   agentId: AgentName
   label: string
-  icon: string
+  roleLabel: string
+  processLabel: string
   state: NodeState
   lastOutput: string
   confidence: number | null
   subTasks: { label: string; done: boolean }[]
 }
 
-// ── Chat message types ────────────────────────────────────────────────────────
+export interface ResearchEdgeData extends Record<string, unknown> {
+  status: EdgeState
+}
 
 export interface ChatMessage {
   id: string
-  role: 'user' | 'agent' | 'system' | 'error'
+  role: 'user' | 'assistant' | 'error'
   content: string
-  agent?: AgentName
   ts: string
-  eventType?: string
+  pending?: boolean
+  brief?: ResearchBrief | null
 }
-
-// ── Initial graph layout ──────────────────────────────────────────────────────
-
-const INITIAL_NODES: Node<AgentNodeData>[] = [
-  {
-    id: 'data',
-    type: 'agentNode',
-    position: { x: 80, y: 280 },
-    data: {
-      agentId: 'data',
-      label: 'Data Agent',
-      icon: '📡',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [],
-    },
-  },
-  {
-    id: 'regime',
-    type: 'agentNode',
-    position: { x: 380, y: 100 },
-    data: {
-      agentId: 'regime',
-      label: 'Regime Agent',
-      icon: '📊',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [],
-    },
-  },
-  {
-    id: 'signal',
-    type: 'agentNode',
-    position: { x: 380, y: 280 },
-    data: {
-      agentId: 'signal',
-      label: 'Signal Agent',
-      icon: '📈',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [
-        { label: 'Technical', done: false },
-        { label: 'Sentiment', done: false },
-        { label: 'Causal', done: false },
-        { label: 'Institutional', done: false },
-      ],
-    },
-  },
-  {
-    id: 'graph',
-    type: 'agentNode',
-    position: { x: 380, y: 460 },
-    data: {
-      agentId: 'graph',
-      label: 'Graph Agent',
-      icon: '🕸️',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [],
-    },
-  },
-  {
-    id: 'risk',
-    type: 'agentNode',
-    position: { x: 680, y: 280 },
-    data: {
-      agentId: 'risk',
-      label: 'Risk Agent',
-      icon: '🛡️',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [],
-    },
-  },
-  {
-    id: 'orchestrator',
-    type: 'agentNode',
-    position: { x: 980, y: 150 },
-    data: {
-      agentId: 'orchestrator',
-      label: 'Orchestrator',
-      icon: '🎯',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [],
-    },
-  },
-  {
-    id: 'execution',
-    type: 'agentNode',
-    position: { x: 980, y: 380 },
-    data: {
-      agentId: 'execution',
-      label: 'Execution Agent',
-      icon: '⚡',
-      state: 'idle',
-      lastOutput: '',
-      confidence: null,
-      subTasks: [],
-    },
-  },
-]
-
-const INITIAL_EDGES: Edge[] = [
-  // Data → Phase 2 agents
-  { id: 'data-regime', source: 'data', target: 'regime', animated: false, style: { stroke: '#6b7280' } },
-  { id: 'data-signal', source: 'data', target: 'signal', animated: false, style: { stroke: '#6b7280' } },
-  { id: 'data-graph',  source: 'data', target: 'graph',  animated: false, style: { stroke: '#6b7280' } },
-  // Phase 2 → Risk
-  { id: 'regime-risk', source: 'regime', target: 'risk', animated: false, style: { stroke: '#6b7280' } },
-  { id: 'signal-risk', source: 'signal', target: 'risk', animated: false, style: { stroke: '#6b7280' } },
-  { id: 'graph-risk',  source: 'graph',  target: 'risk', animated: false, style: { stroke: '#6b7280' } },
-  // Risk → Orchestrator
-  { id: 'risk-orch', source: 'risk', target: 'orchestrator', animated: false, style: { stroke: '#6b7280' } },
-  // Orchestrator → Execution
-  { id: 'orch-exec', source: 'orchestrator', target: 'execution', animated: false, style: { stroke: '#6b7280' } },
-]
-
-// ── Pending approval (assisted mode) ─────────────────────────────────────────
 
 export interface PendingApproval {
   run_id: string
@@ -168,271 +41,502 @@ export interface PendingApproval {
   size_usd: number
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+const AGENT_META: Record<AgentName, { label: string; roleLabel: string; processLabel: string }> = {
+  data: {
+    label: 'Data Agent',
+    roleLabel: 'Market Intake',
+    processLabel: 'Price, volume, and news aggregation',
+  },
+  regime: {
+    label: 'Regime Agent',
+    roleLabel: 'Regime Model',
+    processLabel: 'Market regime classification',
+  },
+  signal: {
+    label: 'Signal Agent',
+    roleLabel: 'Signal Stack',
+    processLabel: 'Technical, sentiment, causal, and institutional checks',
+  },
+  graph: {
+    label: 'Graph Agent',
+    roleLabel: 'Contagion Map',
+    processLabel: 'BTC correlation and contagion analysis',
+  },
+  risk: {
+    label: 'Risk Agent',
+    roleLabel: 'Risk Control',
+    processLabel: 'Sizing, exposure caps, and veto rules',
+  },
+  orchestrator: {
+    label: 'Orchestrator',
+    roleLabel: 'Decision Desk',
+    processLabel: 'Consensus and thesis synthesis',
+  },
+  execution: {
+    label: 'Execution Agent',
+    roleLabel: '0G Execution',
+    processLabel: '0G execution readiness and approval state',
+  },
+}
+
+const INCOMING_EDGE_IDS: Record<AgentName, string[]> = {
+  data: [],
+  regime: ['data-regime'],
+  signal: ['data-signal'],
+  graph: ['data-graph'],
+  risk: ['regime-risk', 'signal-risk', 'graph-risk'],
+  orchestrator: ['risk-orch'],
+  execution: ['orch-exec'],
+}
+
+const OUTGOING_EDGE_IDS: Record<AgentName, string[]> = {
+  data: ['data-regime', 'data-signal', 'data-graph'],
+  regime: ['regime-risk'],
+  signal: ['signal-risk'],
+  graph: ['graph-risk'],
+  risk: ['risk-orch'],
+  orchestrator: ['orch-exec'],
+  execution: [],
+}
+
+function createNode(agentId: AgentName, position: { x: number; y: number }, subTasks: AgentNodeData['subTasks'] = []): Node<AgentNodeData> {
+  const meta = AGENT_META[agentId]
+  return {
+    id: agentId,
+    type: 'agentNode',
+    position,
+    data: {
+      agentId,
+      label: meta.label,
+      roleLabel: meta.roleLabel,
+      processLabel: meta.processLabel,
+      state: 'idle',
+      lastOutput: '',
+      confidence: null,
+      subTasks,
+    },
+  }
+}
+
+const INITIAL_NODES: Node<AgentNodeData>[] = [
+  createNode('data',         { x:  60, y: 360 }),
+  createNode('regime',       { x: 420, y:  30 }),
+  createNode('signal',       { x: 420, y: 330 }, [
+    { label: 'Technical',    done: false },
+    { label: 'Sentiment',    done: false },
+    { label: 'Causal',       done: false },
+    { label: 'Institutional',done: false },
+  ]),
+  createNode('graph',        { x: 420, y: 720 }),
+  createNode('risk',         { x: 780, y: 360 }),
+  createNode('orchestrator', { x: 1140, y: 180 }),
+  createNode('execution',    { x: 1140, y: 490 }),
+]
+
+function edgeVisuals(status: EdgeState) {
+  if (status === 'active') {
+    return {
+      animated: true,
+      color: '#8b5cf6',
+      width: 2.4,
+    }
+  }
+
+  if (status === 'complete') {
+    return {
+      animated: false,
+      color: '#34d399',
+      width: 2.6,
+    }
+  }
+
+  if (status === 'veto') {
+    return {
+      animated: false,
+      color: '#f87171',
+      width: 2.4,
+    }
+  }
+
+  return {
+    animated: false,
+    color: '#4b5563',
+    width: 1.6,
+  }
+}
+
+function styleEdge(edge: Edge<ResearchEdgeData>, status: EdgeState): Edge<ResearchEdgeData> {
+  const visuals = edgeVisuals(status)
+  return {
+    ...edge,
+    data: { status },
+    animated: visuals.animated,
+    style: {
+      stroke: visuals.color,
+      strokeWidth: visuals.width,
+      opacity: status === 'idle' ? 0.65 : 1,
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: visuals.color,
+      width: 18,
+      height: 18,
+    },
+  }
+}
+
+function createEdge(id: string, source: string, target: string): Edge<ResearchEdgeData> {
+  return styleEdge(
+    {
+      id,
+      source,
+      target,
+      type: 'smoothstep',
+      data: { status: 'idle' },
+    },
+    'idle',
+  )
+}
+
+const INITIAL_EDGES: Edge<ResearchEdgeData>[] = [
+  createEdge('data-regime', 'data', 'regime'),
+  createEdge('data-signal', 'data', 'signal'),
+  createEdge('data-graph', 'data', 'graph'),
+  createEdge('regime-risk', 'regime', 'risk'),
+  createEdge('signal-risk', 'signal', 'risk'),
+  createEdge('graph-risk', 'graph', 'risk'),
+  createEdge('risk-orch', 'risk', 'orchestrator'),
+  createEdge('orch-exec', 'orchestrator', 'execution'),
+]
 
 interface ResearchStore {
   nodes: Node<AgentNodeData>[]
-  edges: Edge[]
+  edges: Edge<ResearchEdgeData>[]
   messages: ChatMessage[]
   currentRun: string | null
+  currentTicker: string | null
   currentReceipt: DecisionReceipt | null
+  currentBrief: ResearchBrief | null
   mode: Mode
   isRunning: boolean
   receiptOpen: boolean
-  /**
-   * Set when the orchestrator emits execution.pending with awaiting_approval=true
-   * (assisted mode, consensus reached, waiting for user to confirm the trade).
-   * Cleared on run.start, run.done, run.error, or execution.done.
-   */
   pendingApproval: PendingApproval | null
+  pendingAssistantMessageId: string | null
 
   setMode: (mode: Mode) => void
   setReceiptOpen: (open: boolean) => void
   clearPendingApproval: () => void
   addUserMessage: (content: string) => void
+  startAssistantDraft: (content?: string) => void
   applyEvent: (evt: RunEvent) => void
   resetRun: () => void
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function cloneInitialNodes(): Node<AgentNodeData>[] {
+  return INITIAL_NODES.map((node) => ({
+    ...node,
+    data: {
+      ...node.data,
+      state: 'idle',
+      lastOutput: '',
+      confidence: null,
+      subTasks: node.data.subTasks.map((task) => ({ ...task, done: false })),
+    },
+  }))
+}
+
+function cloneInitialEdges(): Edge<ResearchEdgeData>[] {
+  return INITIAL_EDGES.map((edge) => styleEdge(edge, 'idle'))
+}
 
 function patchNode(
   nodes: Node<AgentNodeData>[],
   agentId: AgentName,
   patch: Partial<AgentNodeData>,
 ): Node<AgentNodeData>[] {
-  return nodes.map((n) =>
-    n.id === agentId ? { ...n, data: { ...n.data, ...patch } } : n,
+  return nodes.map((node) =>
+    node.id === agentId ? { ...node, data: { ...node.data, ...patch } } : node,
   )
 }
 
-function animateEdge(
-  edges: Edge[],
-  sourceId: string,
-  targetId?: string,
-  color = '#7c3aed',
-): Edge[] {
-  return edges.map((e) => {
-    const matches = targetId
-      ? e.source === sourceId && e.target === targetId
-      : e.source === sourceId || e.target === sourceId
-    return matches
-      ? { ...e, animated: true, style: { stroke: color } }
-      : e
+function setEdgeStatus(
+  edges: Edge<ResearchEdgeData>[],
+  ids: string[],
+  status: EdgeState,
+): Edge<ResearchEdgeData>[] {
+  return edges.map((edge) => (ids.includes(edge.id) ? styleEdge(edge, status) : edge))
+}
+
+function setAgentIncomingStatus(
+  edges: Edge<ResearchEdgeData>[],
+  agentId: AgentName,
+  status: EdgeState,
+): Edge<ResearchEdgeData>[] {
+  return setEdgeStatus(edges, INCOMING_EDGE_IDS[agentId], status)
+}
+
+function setAgentOutgoingStatus(
+  edges: Edge<ResearchEdgeData>[],
+  agentId: AgentName,
+  status: EdgeState,
+): Edge<ResearchEdgeData>[] {
+  return setEdgeStatus(edges, OUTGOING_EDGE_IDS[agentId], status)
+}
+
+function updateSignalTasks(
+  nodes: Node<AgentNodeData>[],
+  completedLabels: string[],
+  lastOutput: string,
+): Node<AgentNodeData>[] {
+  return nodes.map((node) => {
+    if (node.id !== 'signal') return node
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        state: 'thinking',
+        lastOutput,
+        subTasks: node.data.subTasks.map((task) => ({
+          ...task,
+          done: task.done || completedLabels.some((label) => label.toLowerCase() === task.label.toLowerCase()),
+        })),
+      },
+    }
   })
 }
 
-function resetEdges(edges: Edge[]): Edge[] {
-  return edges.map((e) => ({ ...e, animated: false, style: { stroke: '#6b7280' } }))
-}
-
-function eventToMessage(evt: RunEvent): ChatMessage {
-  const content = evt.message ?? `[${evt.type}]`
-  const roleMap: Partial<Record<RunEvent['type'], ChatMessage['role']>> = {
-    'run.error': 'error',
-    'run.start':  'system',
-    'run.done':   'system',
-  }
+function buildPendingAssistantMessage(content?: string): ChatMessage {
   return {
-    id: `evt_${evt.ts}_${Math.random().toString(36).slice(2, 6)}`,
-    role: roleMap[evt.type] ?? 'agent',
-    content,
-    agent: evt.agent,
-    ts: evt.ts,
-    eventType: evt.type,
+    id: `assistant_${Date.now()}`,
+    role: 'assistant',
+    content: content ?? 'Six ATS agents are gathering data, scoring the setup, and building the final brief.',
+    ts: new Date().toISOString(),
+    pending: true,
+    brief: null,
   }
 }
 
-// ── Create store ──────────────────────────────────────────────────────────────
+function buildFinalAssistantMessage(receipt: DecisionReceipt): ChatMessage {
+  const brief = receipt.research_brief ?? null
+  return {
+    id: `assistant_${Date.now()}`,
+    role: 'assistant',
+    content: brief?.summary ?? `Research complete for ${receipt.ticker}.`,
+    ts: new Date().toISOString(),
+    pending: false,
+    brief,
+  }
+}
 
-export const useResearchStore = create<ResearchStore>((set, get) => ({
-  nodes: INITIAL_NODES,
-  edges: INITIAL_EDGES,
+function finalizeAssistantMessage(
+  messages: ChatMessage[],
+  pendingId: string | null,
+  nextMessage: ChatMessage,
+): ChatMessage[] {
+  if (!pendingId) {
+    return [...messages, nextMessage]
+  }
+
+  let replaced = false
+  const nextMessages = messages.map((message) =>
+    message.id === pendingId ? { ...nextMessage, id: message.id } : message,
+  )
+  replaced = nextMessages.some((message) => message.id === pendingId)
+  return replaced ? nextMessages : [...messages, nextMessage]
+}
+
+export const useResearchStore = create<ResearchStore>((set) => ({
+  nodes: cloneInitialNodes(),
+  edges: cloneInitialEdges(),
   messages: [],
   currentRun: null,
+  currentTicker: null,
   currentReceipt: null,
+  currentBrief: null,
   mode: 'solo',
   isRunning: false,
   receiptOpen: false,
   pendingApproval: null,
+  pendingAssistantMessageId: null,
 
   setMode: (mode) => set({ mode }),
   setReceiptOpen: (open) => set({ receiptOpen: open }),
   clearPendingApproval: () => set({ pendingApproval: null }),
 
   addUserMessage: (content) => {
-    const msg: ChatMessage = {
+    const message: ChatMessage = {
       id: `user_${Date.now()}`,
       role: 'user',
       content,
       ts: new Date().toISOString(),
     }
-    set((s) => ({ messages: [...s.messages, msg] }))
+    set((state) => ({ messages: [...state.messages, message] }))
   },
+
+  startAssistantDraft: (content) =>
+    set((state) => {
+      const pending = buildPendingAssistantMessage(content)
+      return {
+        messages: [...state.messages, pending],
+        pendingAssistantMessageId: pending.id,
+      }
+    }),
 
   resetRun: () =>
     set({
-      nodes: INITIAL_NODES.map((n) => ({
-        ...n,
-        data: {
-          ...n.data,
-          state: 'idle' as NodeState,
-          lastOutput: '',
-          confidence: null,
-          subTasks: n.data.subTasks.map((t) => ({ ...t, done: false })),
-        },
-      })),
-      edges: resetEdges(get().edges),
+      nodes: cloneInitialNodes(),
+      edges: cloneInitialEdges(),
       currentRun: null,
+      currentTicker: null,
       currentReceipt: null,
+      currentBrief: null,
       isRunning: false,
+      receiptOpen: false,
       pendingApproval: null,
+      pendingAssistantMessageId: null,
     }),
 
-  applyEvent: (evt: RunEvent) => {
-    set((s) => {
-      let { nodes, edges } = s
-      const messages = [...s.messages, eventToMessage(evt)]
-      let isRunning = s.isRunning
-      let currentRun = s.currentRun
-      let currentReceipt = s.currentReceipt
-      let receiptOpen = s.receiptOpen
-      let pendingApproval = s.pendingApproval
+  applyEvent: (evt) =>
+    set((state) => {
+      let nodes = state.nodes
+      let edges = state.edges
+      let isRunning = state.isRunning
+      let currentRun = state.currentRun
+      let currentTicker = state.currentTicker
+      let currentReceipt = state.currentReceipt
+      let currentBrief = state.currentBrief
+      let receiptOpen = state.receiptOpen
+      let pendingApproval = state.pendingApproval
+      let pendingAssistantMessageId = state.pendingAssistantMessageId
+      let messages = state.messages
 
       switch (evt.type) {
-        // ── Run lifecycle ──────────────────────────────────────────────────────
-        case 'run.start':
+        case 'run.start': {
+          const payloadTicker =
+            typeof evt.payload?.ticker === 'string' ? evt.payload.ticker.toUpperCase() : null
+          nodes = cloneInitialNodes()
+          edges = cloneInitialEdges()
           isRunning = true
           currentRun = evt.run_id
+          currentTicker = payloadTicker
+          currentReceipt = null
+          currentBrief = null
+          receiptOpen = false
           pendingApproval = null
-          // Reset all nodes to idle
-          nodes = INITIAL_NODES.map((n) => ({
-            ...n,
-            data: {
-              ...n.data,
-              state: 'idle' as NodeState,
-              lastOutput: '',
-              confidence: null,
-              subTasks: n.data.subTasks.map((t) => ({ ...t, done: false })),
-            },
-          }))
-          edges = resetEdges(INITIAL_EDGES)
           break
+        }
 
         case 'run.done':
           isRunning = false
           pendingApproval = null
+          currentRun = evt.run_id
+          currentReceipt = evt.receipt ?? state.currentReceipt
+          currentBrief = evt.receipt?.research_brief ?? null
+          currentTicker = evt.receipt?.ticker ?? state.currentTicker
+          receiptOpen = false
           if (evt.receipt) {
-            currentReceipt = evt.receipt
-            receiptOpen = true
+            messages = finalizeAssistantMessage(
+              messages,
+              pendingAssistantMessageId,
+              buildFinalAssistantMessage(evt.receipt),
+            )
+            pendingAssistantMessageId = null
           }
-          // Mark orchestrator done
           nodes = patchNode(nodes, 'orchestrator', {
             state: 'done',
-            lastOutput: evt.message ?? 'Run complete',
+            lastOutput: evt.message ?? 'Research brief ready',
+            confidence: evt.receipt?.consensus.confidence ?? nodes.find((node) => node.id === 'orchestrator')?.data.confidence ?? null,
           })
+          edges = setAgentIncomingStatus(edges, 'orchestrator', 'complete')
           break
 
         case 'run.error':
           isRunning = false
           pendingApproval = null
+          messages = finalizeAssistantMessage(messages, pendingAssistantMessageId, {
+            id: `error_${Date.now()}`,
+            role: 'error',
+            content: evt.message ?? 'Research failed.',
+            ts: evt.ts,
+            pending: false,
+            brief: null,
+          })
+          pendingAssistantMessageId = null
           break
 
-        // ── Agent thinking ─────────────────────────────────────────────────────
         case 'agent.thinking':
           if (evt.agent) {
             nodes = patchNode(nodes, evt.agent, {
               state: 'thinking',
               lastOutput: evt.message ?? '',
             })
-            // Animate incoming edges
-            edges = animateEdge(edges, 'data', evt.agent, '#7c3aed')
+            if (evt.agent === 'data') {
+              edges = setAgentOutgoingStatus(edges, 'data', 'active')
+            } else {
+              edges = setAgentIncomingStatus(edges, evt.agent, 'active')
+            }
           }
           break
 
-        // ── Agent done ─────────────────────────────────────────────────────────
         case 'agent.done': {
           if (evt.agent) {
-            const payload = evt.payload as Record<string, unknown> | undefined
-            const conf =
-              typeof payload?.confidence === 'number' ? payload.confidence : null
+            const confidence =
+              typeof evt.payload?.confidence === 'number' ? evt.payload.confidence : null
             nodes = patchNode(nodes, evt.agent, {
               state: 'done',
               lastOutput: evt.message ?? '',
-              confidence: conf,
+              confidence,
             })
-            // Animate outgoing edges
-            if (evt.agent === 'data') {
-              edges = animateEdge(edges, 'data', 'regime', '#22c55e')
-              edges = animateEdge(edges, 'data', 'signal', '#22c55e')
-              edges = animateEdge(edges, 'data', 'graph',  '#22c55e')
-            } else if (
-              evt.agent === 'regime' ||
-              evt.agent === 'signal' ||
-              evt.agent === 'graph'
-            ) {
-              edges = animateEdge(edges, evt.agent, 'risk', '#22c55e')
-            } else if (evt.agent === 'risk') {
-              edges = animateEdge(edges, 'risk', 'orchestrator', '#22c55e')
-            } else if (evt.agent === 'orchestrator') {
-              edges = animateEdge(edges, 'orchestrator', 'execution', '#22c55e')
+            edges = setAgentIncomingStatus(edges, evt.agent, 'complete')
+            if (evt.agent === 'data' || evt.agent === 'regime' || evt.agent === 'signal' || evt.agent === 'graph') {
+              edges = setAgentOutgoingStatus(edges, evt.agent, 'complete')
             }
           }
           break
         }
 
-        // ── Agent vetoed ───────────────────────────────────────────────────────
         case 'agent.vetoed':
           if (evt.agent) {
             nodes = patchNode(nodes, evt.agent, {
               state: 'vetoed',
-              lastOutput: evt.message ?? 'Vetoed',
+              lastOutput: evt.message ?? 'Blocked by risk controls',
             })
-            edges = animateEdge(edges, evt.agent, undefined, '#ef4444')
+            edges = setAgentIncomingStatus(edges, evt.agent, 'veto')
+            edges = setAgentOutgoingStatus(edges, evt.agent, 'veto')
           }
           break
 
-        // ── Agent-specific events ──────────────────────────────────────────────
         case 'agent.data':
           nodes = patchNode(nodes, 'data', {
             state: 'done',
-            lastOutput: evt.message ?? 'Data bundle ready',
+            lastOutput: evt.message ?? 'Fresh market packet ready',
           })
-          edges = animateEdge(edges, 'data', 'regime', '#22c55e')
-          edges = animateEdge(edges, 'data', 'signal', '#22c55e')
-          edges = animateEdge(edges, 'data', 'graph',  '#22c55e')
+          edges = setAgentOutgoingStatus(edges, 'data', 'complete')
           break
 
-        case 'regime.classified':
+        case 'regime.classified': {
+          const confidence =
+            typeof evt.payload?.confidence === 'number' ? evt.payload.confidence : null
           nodes = patchNode(nodes, 'regime', {
             state: 'done',
             lastOutput: evt.message ?? '',
+            confidence,
           })
-          edges = animateEdge(edges, 'regime', 'risk', '#22c55e')
+          edges = setAgentIncomingStatus(edges, 'regime', 'complete')
+          edges = setAgentOutgoingStatus(edges, 'regime', 'complete')
           break
+        }
 
         case 'signal.update': {
-          const payload = evt.payload as Record<string, unknown> | undefined
-          const subTaskKey = payload?.sub_task as string | undefined
-          if (subTaskKey) {
-            nodes = nodes.map((n) =>
-              n.id === 'signal'
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      state: 'thinking' as NodeState,
-                      lastOutput: evt.message ?? '',
-                      subTasks: n.data.subTasks.map((t) =>
-                        t.label.toLowerCase() === subTaskKey.toLowerCase()
-                          ? { ...t, done: true }
-                          : t,
-                      ),
-                    },
-                  }
-                : n,
-            )
-          }
+          const submodule = typeof evt.payload?.submodule === 'string' ? evt.payload.submodule : ''
+          const completed =
+            submodule === 'technical'
+              ? ['Technical']
+              : submodule === 'llm'
+                ? ['Sentiment', 'Causal', 'Institutional']
+                : []
+          nodes = updateSignalTasks(nodes, completed, evt.message ?? '')
+          edges = setAgentIncomingStatus(edges, 'signal', 'active')
           break
         }
 
@@ -441,55 +545,77 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
             state: 'thinking',
             lastOutput: evt.message ?? '',
           })
+          edges = setAgentIncomingStatus(edges, 'graph', 'active')
           break
 
         case 'risk.sizing': {
-          const payload = evt.payload as Record<string, unknown> | undefined
-          const veto = payload?.veto_triggered as boolean | undefined
+          const vetoTriggered = evt.payload?.veto_triggered === true
           nodes = patchNode(nodes, 'risk', {
-            state: veto ? 'vetoed' : 'thinking',
+            state: vetoTriggered ? 'vetoed' : 'thinking',
             lastOutput: evt.message ?? '',
           })
+          edges = setAgentIncomingStatus(edges, 'risk', vetoTriggered ? 'veto' : 'complete')
+          edges = setAgentOutgoingStatus(edges, 'risk', vetoTriggered ? 'veto' : 'active')
           break
         }
 
-        case 'consensus.reached':
+        case 'consensus.reached': {
+          const confidence =
+            typeof evt.payload?.confidence === 'number' ? evt.payload.confidence : null
           nodes = patchNode(nodes, 'orchestrator', {
             state: 'thinking',
             lastOutput: evt.message ?? '',
+            confidence,
           })
-          edges = animateEdge(edges, 'risk', 'orchestrator', '#a855f7')
+          edges = setAgentIncomingStatus(edges, 'orchestrator', 'active')
           break
+        }
 
         case 'execution.pending': {
-          const p = evt.payload as Record<string, unknown> | undefined
-          // awaiting_approval=true signals the orchestrator is pausing for user
-          // approval in assisted mode; this is distinct from the execution agent's
-          // own "about to sign" pending event (which lacks awaiting_approval).
-          if (p?.awaiting_approval === true) {
-            const decision = p.decision as 'BUY' | 'SELL' | undefined
-            const size_usd = typeof p.size_usd === 'number' ? p.size_usd : 0
-            if (decision === 'BUY' || decision === 'SELL') {
-              pendingApproval = { run_id: evt.run_id, decision, size_usd }
+          const decision = evt.payload?.decision
+          const sizeUsd =
+            typeof evt.payload?.size_usd === 'number' ? evt.payload.size_usd : 0
+          if (evt.payload?.awaiting_approval === true && (decision === 'BUY' || decision === 'SELL')) {
+            pendingApproval = {
+              run_id: evt.run_id,
+              decision,
+              size_usd: sizeUsd,
             }
           }
+
           nodes = patchNode(nodes, 'execution', {
             state: 'thinking',
             lastOutput: evt.message ?? '',
           })
+          edges = setAgentIncomingStatus(edges, 'execution', 'active')
           break
         }
 
-        case 'execution.done':
+        case 'execution.done': {
+          const status = typeof evt.payload?.status === 'string' ? evt.payload.status : null
+          const blocked = status === 'failed' || status === 'pending_deployment'
           pendingApproval = null
           nodes = patchNode(nodes, 'execution', {
-            state: 'done',
+            state: blocked ? 'vetoed' : 'done',
             lastOutput: evt.message ?? '',
           })
+          edges = setAgentIncomingStatus(edges, 'execution', blocked ? 'veto' : 'complete')
           break
+        }
       }
 
-      return { nodes, edges, messages, isRunning, currentRun, currentReceipt, receiptOpen, pendingApproval }
-    })
-  },
+      return {
+        nodes,
+        edges,
+        messages,
+        currentRun,
+        currentTicker,
+        currentReceipt,
+        currentBrief,
+        isRunning,
+        receiptOpen,
+        pendingApproval,
+        pendingAssistantMessageId,
+      }
+    }),
 }))

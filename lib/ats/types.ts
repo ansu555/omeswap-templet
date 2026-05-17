@@ -97,6 +97,48 @@ export interface Consensus {
   vetoed_by: AgentName[]
 }
 
+export interface ResearchBriefEvidenceItem {
+  title: string
+  source: string
+  url: string
+  published_at: string
+  summary: string
+}
+
+export interface ResearchBriefAgentFinding {
+  agent: AgentName
+  label: string
+  summary: string
+  vote?: AgentVote['vote']
+  confidence?: number | null
+}
+
+export interface ResearchBriefExecution {
+  mode: Mode
+  status: 'ready' | 'approval_required' | 'submitted' | 'blocked' | 'not_applicable'
+  summary: string
+  chain_id: number
+  tx_hash?: string | null
+}
+
+export interface ResearchBrief {
+  verdict: Decision
+  worth_it: 'yes' | 'no' | 'watch'
+  headline: string
+  summary: string
+  conviction_label: 'high' | 'medium' | 'low'
+  confidence: number
+  suggested_allocation_usd: number
+  max_loss_usd: number
+  allocation_note: string
+  thesis: string[]
+  counter_points: string[]
+  risk_flags: string[]
+  execution: ResearchBriefExecution
+  agent_findings: ResearchBriefAgentFinding[]
+  evidence: ResearchBriefEvidenceItem[]
+}
+
 // ── Decision Receipt (doc § 3.1) ──────────────────────────────────────────────
 
 export interface DecisionReceipt {
@@ -122,6 +164,7 @@ export interface DecisionReceipt {
   causal_chain: CausalChainAnalysis
   risk_sizing: RiskSizing
   consensus: Consensus
+  research_brief?: ResearchBrief | null
 
   /** Stub for future 0G Compute sealed-inference proof reference */
   proof_ref?: string | null

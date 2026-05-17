@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 import {
   MessageCircle,
   X,
@@ -48,6 +49,7 @@ interface ChatMessage {
 export function ChatbotPanel() {
   const { isOpen, closeChat, agentBuilderMode, agentBuilderContext } =
     useChatContext();
+  const pathname = usePathname();
 
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -76,6 +78,12 @@ export function ChatbotPanel() {
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  React.useEffect(() => {
+    if (pathname === "/research" && isOpen) {
+      closeChat();
+    }
+  }, [closeChat, isOpen, pathname]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,9 +172,10 @@ export function ChatbotPanel() {
   };
 
   const hasMessages = messages.length > 0;
+  const isResearchRoute = pathname === "/research";
 
   // Hide the generic chat panel when agent-builder page has its own AgentSidebar.
-  if (agentBuilderMode) return null;
+  if (agentBuilderMode || isResearchRoute) return null;
 
   return (
     <AnimatePresence mode="wait">
@@ -563,9 +572,11 @@ export function ChatbotPanel() {
 
 export function ChatToggleButton() {
   const { isOpen, openChat, agentBuilderMode } = useChatContext();
+  const pathname = usePathname();
+  const isResearchRoute = pathname === "/research";
 
   // Hide toggle when agent-builder page has its own AgentSidebar
-  if (isOpen || agentBuilderMode) return null;
+  if (isOpen || agentBuilderMode || isResearchRoute) return null;
 
   return (
     <motion.div

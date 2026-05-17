@@ -1,98 +1,31 @@
 "use client";
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { useResearchStore } from "@/store/research";
-import type { DecisionReceipt, AgentVote } from "@/lib/ats/types";
+import type { ReactNode } from "react";
+import { ExternalLink, FileText, X } from "lucide-react";
 import clsx from "clsx";
+import { useResearchStore } from "@/store/research";
+import type { DecisionReceipt, ResearchBrief } from "@/lib/ats/types";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function DecisionBadge({ decision }: { decision: string }) {
-  const colour =
-    decision === "BUY"
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-      : decision === "SELL"
-        ? "border-red-500/40 bg-red-500/10 text-red-300"
-        : decision === "VETO"
-          ? "border-orange-500/40 bg-orange-500/10 text-orange-300"
-          : "border-white/20 bg-white/5 text-white/60";
+function Badge({
+  children,
+  tone = "default",
+}: {
+  children: ReactNode;
+  tone?: "default" | "good" | "warn" | "bad";
+}) {
+  const classes =
+    tone === "good"
+      ? "bg-emerald-500/15 text-emerald-100"
+      : tone === "warn"
+        ? "bg-amber-500/15 text-amber-100"
+        : tone === "bad"
+          ? "bg-rose-500/15 text-rose-100"
+          : "bg-white/8 text-white/70";
 
   return (
-    <span
-      className={clsx(
-        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border",
-        colour,
-      )}
-    >
-      {decision}
+    <span className={clsx("rounded-full px-2 py-1 text-[9px] font-medium", classes)}>
+      {children}
     </span>
-  );
-}
-
-function VotePill({ vote }: { vote: AgentVote }) {
-  const voteColour =
-    vote.vote === "BUY"
-      ? "text-emerald-400"
-      : vote.vote === "SELL"
-        ? "text-red-400"
-        : "text-white/40";
-
-  return (
-    <div
-      className="rounded-xl p-2.5 space-y-1.5"
-      style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-white/80 capitalize">
-          {vote.agent}
-        </span>
-        <div className="flex items-center gap-2">
-          {vote.vetoed && (
-            <span className="text-[9px] text-red-400 font-medium bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full">
-              VETO
-            </span>
-          )}
-          <span className={clsx("text-[11px] font-bold", voteColour)}>
-            {vote.vote}
-          </span>
-        </div>
-      </div>
-      {/* Confidence bar */}
-      <div className="space-y-0.5">
-        <div className="flex justify-between">
-          <span className="text-[9px] text-white/30">Confidence</span>
-          <span className="text-[9px] font-mono text-white/50">
-            {Math.round(vote.confidence * 100)}%
-          </span>
-        </div>
-        <div className="h-1 w-full rounded-full bg-white/5">
-          <div
-            className={clsx(
-              "h-full rounded-full transition-all duration-500",
-              vote.vote === "BUY"
-                ? "bg-emerald-500"
-                : vote.vote === "SELL"
-                  ? "bg-red-500"
-                  : "bg-white/20",
-            )}
-            style={{ width: `${Math.round(vote.confidence * 100)}%` }}
-          />
-        </div>
-      </div>
-      {vote.rationale && (
-        <p className="text-[10px] text-white/35 leading-snug line-clamp-2">
-          {vote.rationale}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -101,290 +34,357 @@ function Section({
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div className="space-y-2">
-      <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">
+    <section className="space-y-2.5">
+      <p className="text-[10px] uppercase tracking-[0.22em] text-white/28">
         {title}
-      </h3>
+      </p>
       {children}
-    </div>
+    </section>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+function fallbackBrief(receipt: DecisionReceipt): ResearchBrief {
+  return {
+    verdict: receipt.consensus.decision,
+    worth_it:
+      receipt.consensus.decision === "BUY"
+        ? "yes"
+        : receipt.consensus.decision === "SELL" || receipt.consensus.decision === "VETO"
+          ? "no"
+          : "watch",
+    headline: `${receipt.ticker} research brief`,
+    summary: receipt.consensus.rationale,
+    conviction_label:
+      receipt.consensus.confidence >= 0.78
+        ? "high"
+        : receipt.consensus.confidence >= 0.56
+          ? "medium"
+          : "low",
+    confidence: receipt.consensus.confidence,
+    suggested_allocation_usd: receipt.risk_sizing.size_usd,
+    max_loss_usd: receipt.risk_sizing.max_loss_usd,
+    allocation_note: receipt.risk_sizing.veto_reason ?? "No detailed allocation note persisted for this run.",
+    thesis: [receipt.consensus.rationale],
+    counter_points: receipt.risk_sizing.veto_reason ? [receipt.risk_sizing.veto_reason] : [],
+    risk_flags: receipt.risk_sizing.veto_reason
+      ? [receipt.risk_sizing.veto_reason]
+      : [`Modeled max loss: $${receipt.risk_sizing.max_loss_usd.toFixed(2)}`],
+    execution: {
+      mode: "solo",
+      status: "not_applicable",
+      summary: "Execution detail is unavailable for this receipt snapshot.",
+      chain_id: receipt.chain_id,
+      tx_hash: receipt.tx_hash,
+    },
+    agent_findings: receipt.agent_votes.map((vote) => ({
+      agent: vote.agent,
+      label: vote.agent,
+      summary: vote.rationale,
+      vote: vote.vote,
+      confidence: vote.confidence,
+    })),
+    evidence: [],
+  };
+}
 
 export default function DecisionReceiptDrawer() {
-  const receiptOpen = useResearchStore((s) => s.receiptOpen);
-  const setReceiptOpen = useResearchStore((s) => s.setReceiptOpen);
-  const receipt = useResearchStore((s) => s.currentReceipt);
+  const receiptOpen = useResearchStore((state) => state.receiptOpen);
+  const setReceiptOpen = useResearchStore((state) => state.setReceiptOpen);
+  const receipt = useResearchStore((state) => state.currentReceipt);
 
-  if (!receipt) return null;
+  if (!receiptOpen || !receipt) return null;
 
-  const r: DecisionReceipt = receipt;
-  const decisionDate = r.created_at
-    ? new Date(r.created_at).toLocaleString()
+  const brief = receipt.research_brief ?? fallbackBrief(receipt);
+  const decisionDate = receipt.created_at
+    ? new Date(receipt.created_at).toLocaleString()
     : new Date().toLocaleString();
 
   return (
-    <Sheet open={receiptOpen} onOpenChange={setReceiptOpen}>
-      <SheetContent
-        side="right"
-        className="w-full max-w-[420px] overflow-y-auto p-0"
+    <div className="absolute inset-0 z-30">
+      <div
+        className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+        onClick={() => setReceiptOpen(false)}
+      />
+
+      <div
+        className="absolute inset-y-0 right-0 flex w-full max-w-[480px] flex-col overflow-hidden"
         style={{
-          background: "linear-gradient(180deg, #0d0d1a 0%, #0a0a18 100%)",
-          border: "none",
-          borderLeft: "1px solid rgba(124,58,237,0.2)",
+          background: "linear-gradient(180deg, rgba(18,17,28,0.98), rgba(10,10,19,0.98))",
+          borderLeft: "1px solid rgba(139,92,246,0.14)",
         }}
       >
-        {/* Header */}
-        <SheetHeader
-          className="px-5 py-4"
+        <div
+          className="flex items-start justify-between gap-3 px-5 py-4"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <SheetTitle className="flex items-center gap-3 text-sm font-bold text-white">
-            <span className="text-lg">📋</span>
-            Decision Receipt
-            <DecisionBadge decision={r.consensus.decision} />
-          </SheetTitle>
-          <p className="text-[10px] text-white/30 font-mono mt-0.5">
-            {r.run_id}
-          </p>
-          <p className="text-[10px] text-white/25">{decisionDate}</p>
-        </SheetHeader>
+          <div>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                style={{
+                  background: "rgba(139,92,246,0.14)",
+                  border: "1px solid rgba(139,92,246,0.18)",
+                }}
+              >
+                <FileText className="h-4.5 w-4.5 text-violet-100" />
+              </div>
+              <div>
+                <p className="text-[14px] font-semibold text-white/92">
+                  Research Brief
+                </p>
+                <p className="text-[10px] text-white/30">
+                  {receipt.run_id} · {decisionDate}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge
+                tone={
+                  brief.worth_it === "yes"
+                    ? "good"
+                    : brief.worth_it === "no"
+                      ? "bad"
+                      : "warn"
+                }
+              >
+                {brief.worth_it === "yes"
+                  ? "Worth it"
+                  : brief.worth_it === "no"
+                    ? "Avoid"
+                    : "Watch"}
+              </Badge>
+              <Badge>{brief.verdict}</Badge>
+              <Badge>{Math.round(brief.confidence * 100)}% confidence</Badge>
+            </div>
+          </div>
 
-        {/* Body */}
-        <div className="px-5 py-4 space-y-5">
-          {/* Trigger */}
-          <Section title="Trigger">
+          <button
+            type="button"
+            onClick={() => setReceiptOpen(false)}
+            className="rounded-xl p-2 text-white/45 transition-colors hover:text-white"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          <Section title="Overview">
             <div
-              className="rounded-xl p-3 space-y-1"
+              className="rounded-[24px] p-4"
               style={{
                 background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
-              <div className="flex gap-2">
-                <span className="text-[9px] text-white/30 uppercase tracking-wide shrink-0 mt-0.5">
-                  Type
-                </span>
-                <span className="text-[10px] text-white/70 capitalize">
-                  {r.trigger_type.replace("_", " ")}
-                </span>
-              </div>
-              {r.query && (
-                <div className="flex gap-2">
-                  <span className="text-[9px] text-white/30 uppercase tracking-wide shrink-0 mt-0.5">
-                    Query
-                  </span>
-                  <span className="text-[10px] text-white/70 italic">
-                    "{r.query}"
-                  </span>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <span className="text-[9px] text-white/30 uppercase tracking-wide shrink-0 mt-0.5">
-                  Ticker
-                </span>
-                <span className="text-[10px] text-white/80 font-mono font-semibold">
-                  {r.ticker}
-                </span>
-              </div>
+              <h3 className="text-[16px] font-medium text-white/94">
+                {brief.headline}
+              </h3>
+              <p className="mt-3 text-[12px] leading-relaxed text-white/60">
+                {brief.summary}
+              </p>
             </div>
           </Section>
 
-          {/* Market Regime */}
-          <Section title="Regime">
-            <div
-              className="rounded-xl px-3 py-2 flex items-center justify-between"
-              style={{
-                background: "rgba(99,102,241,0.08)",
-                border: "1px solid rgba(99,102,241,0.2)",
-              }}
-            >
-              <span className="text-[11px] text-indigo-300 font-medium capitalize">
-                {r.regime.replace(/_/g, " ")}
-              </span>
-              <span className="text-lg">
-                {r.regime.includes("bull")
-                  ? "📈"
-                  : r.regime.includes("bear")
-                    ? "📉"
-                    : r.regime === "sideways"
-                      ? "↔️"
-                      : "🔍"}
-              </span>
+          <Section title="Sizing">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div
+                className="rounded-[20px] px-3 py-3"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <p className="text-[9px] uppercase tracking-[0.18em] text-white/24">
+                  Suggested Allocation
+                </p>
+                <p className="mt-2 text-[14px] font-medium text-white/90">
+                  ${brief.suggested_allocation_usd.toFixed(2)}
+                </p>
+              </div>
+              <div
+                className="rounded-[20px] px-3 py-3"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <p className="text-[9px] uppercase tracking-[0.18em] text-white/24">
+                  Max Loss
+                </p>
+                <p className="mt-2 text-[14px] font-medium text-white/90">
+                  ${brief.max_loss_usd.toFixed(2)}
+                </p>
+              </div>
             </div>
+            <p className="text-[11px] leading-relaxed text-white/54">
+              {brief.allocation_note}
+            </p>
           </Section>
 
-          {/* Agent votes */}
-          <Section title={`Agent Votes (${r.agent_votes.length})`}>
+          <Section title="Why It Got This Verdict">
             <div className="space-y-2">
-              {r.agent_votes.map((v) => (
-                <VotePill key={v.agent} vote={v} />
+              {brief.thesis.map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl px-3 py-3 text-[11px] leading-relaxed text-white/62"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  {item}
+                </div>
               ))}
             </div>
           </Section>
 
-          {/* Consensus */}
-          <Section title="Consensus">
-            <div
-              className="rounded-xl p-3 space-y-2"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <DecisionBadge decision={r.consensus.decision} />
-                <span className="text-[10px] font-mono text-white/50">
-                  {Math.round(r.consensus.confidence * 100)}% confidence
-                </span>
-              </div>
-              {r.consensus.rationale && (
-                <p className="text-[10px] text-white/50 leading-relaxed">
-                  {r.consensus.rationale}
-                </p>
-              )}
-              {r.consensus.approved_by.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {r.consensus.approved_by.map((a) => (
-                    <span
-                      key={a}
-                      className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    >
-                      {a}
-                    </span>
-                  ))}
+          <Section title="Counter Risks">
+            <div className="space-y-2">
+              {brief.counter_points.map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl px-3 py-3 text-[11px] leading-relaxed text-white/58"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  {item}
                 </div>
-              )}
-              {r.consensus.vetoed_by.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {r.consensus.vetoed_by.map((a) => (
-                    <span
-                      key={a}
-                      className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20"
-                    >
-                      {a} (against)
-                    </span>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           </Section>
 
-          {/* Risk Sizing */}
-          <Section title="Risk Sizing">
-            <div
-              className="rounded-xl p-3 space-y-2"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              {r.risk_sizing.veto_triggered ? (
-                <div className="flex items-center gap-2 text-[11px] text-orange-300">
-                  <span>⛔</span>
-                  <span>Risk veto: {r.risk_sizing.veto_reason ?? "Hard rule breached"}</span>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    ["Kelly Fraction", `${(r.risk_sizing.kelly_fraction * 100).toFixed(1)}%`],
-                    ["Size", `$${r.risk_sizing.size_usd.toFixed(2)}`],
-                    ["Max Loss", `$${r.risk_sizing.max_loss_usd.toFixed(2)}`],
-                  ].map(([k, v]) => (
-                    <div key={k}>
-                      <div className="text-[9px] text-white/30">{k}</div>
-                      <div className="text-[11px] font-mono text-white/80">{v}</div>
+          <Section title="Agent Findings">
+            <div className="space-y-2.5">
+              {brief.agent_findings.map((finding) => (
+                <div
+                  key={`${finding.agent}-${finding.label}`}
+                  className="rounded-[20px] p-3"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-medium text-white/88">
+                        {finding.label}
+                      </p>
+                      <p className="text-[9px] uppercase tracking-[0.18em] text-white/24">
+                        {finding.agent}
+                      </p>
                     </div>
-                  ))}
+                    <div className="flex flex-wrap gap-1.5">
+                      {finding.vote && <Badge>{finding.vote}</Badge>}
+                      {finding.confidence !== undefined && finding.confidence !== null && (
+                        <Badge>{Math.round(finding.confidence * 100)}%</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-white/58">
+                    {finding.summary}
+                  </p>
                 </div>
-              )}
+              ))}
             </div>
           </Section>
 
-          {/* Causal chain */}
-          {r.causal_chain.active_chains.length > 0 && (
-            <Section title="Causal Chains">
-              <div className="space-y-2">
-                {r.causal_chain.active_chains.slice(0, 3).map((c) => (
-                  <div
-                    key={c.chain.id}
-                    className="rounded-xl p-2.5 space-y-1"
+          <Section title="Evidence">
+            {brief.evidence.length > 0 ? (
+              <div className="space-y-2.5">
+                {brief.evidence.map((item) => (
+                  <a
+                    key={item.url}
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block rounded-[20px] p-3 transition-colors hover:bg-white/[0.04]"
                     style={{
-                      background: "rgba(255,255,255,0.02)",
+                      background: "rgba(255,255,255,0.03)",
                       border: "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium text-white/70">
-                        {c.chain.name}
-                      </span>
-                      <span
-                        className={clsx(
-                          "text-[9px] font-mono",
-                          c.chain.expected_impact === "positive"
-                            ? "text-emerald-400"
-                            : c.chain.expected_impact === "negative"
-                              ? "text-red-400"
-                              : "text-white/30",
-                        )}
-                      >
-                        {Math.round(c.active_probability * 100)}% active
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-medium text-white/88">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-[10px] text-white/34">
+                          {item.source} · {new Date(item.published_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-white/30" />
                     </div>
-                    {c.supporting_evidence && (
-                      <p className="text-[9px] text-white/30 line-clamp-2">
-                        {c.supporting_evidence}
-                      </p>
-                    )}
-                  </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-white/56">
+                      {item.summary}
+                    </p>
+                  </a>
                 ))}
-                <div className="text-[9px] text-white/25 text-center capitalize">
-                  Net bias: {r.causal_chain.net_directional_bias}
-                </div>
               </div>
-            </Section>
-          )}
-
-          {/* Execution */}
-          {(r.tx_hash || r.storage_root_hash) && (
-            <Section title="Execution">
+            ) : (
               <div
-                className="rounded-xl p-3 space-y-2"
+                className="rounded-[20px] px-3 py-3 text-[11px] leading-relaxed text-white/50"
                 style={{
                   background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.06)",
                 }}
               >
-                {r.tx_hash && (
-                  <div>
-                    <div className="text-[9px] text-white/30 mb-0.5">Tx Hash</div>
-                    <span className="text-[10px] font-mono text-purple-400 break-all">
-                      {r.tx_hash}
-                    </span>
-                  </div>
-                )}
-                {r.storage_root_hash && (
-                  <div>
-                    <div className="text-[9px] text-white/30 mb-0.5">
-                      0G Storage Root
-                    </div>
-                    <span className="text-[10px] font-mono text-white/40 break-all">
-                      {r.storage_root_hash}
-                    </span>
-                  </div>
-                )}
-                <div className="text-[9px] text-white/25">
-                  Chain ID: {r.chain_id}
-                </div>
+                No external evidence links were attached to this brief.
               </div>
-            </Section>
-          )}
+            )}
+          </Section>
+
+          <Section title="0G Execution">
+            <div
+              className="rounded-[20px] p-3"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div className="flex flex-wrap gap-2">
+                <Badge>{brief.execution.status.replace(/_/g, " ")}</Badge>
+                <Badge>Chain {brief.execution.chain_id}</Badge>
+                {brief.execution.tx_hash && <Badge>{brief.execution.tx_hash.slice(0, 10)}…</Badge>}
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-white/58">
+                {brief.execution.summary}
+              </p>
+            </div>
+          </Section>
+
+          <Section title="Technical Receipt">
+            <details
+              className="rounded-[20px] p-3"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <summary className="cursor-pointer text-[11px] font-medium text-white/82">
+                Show raw ATS fields
+              </summary>
+              <div className="mt-3 space-y-2 text-[11px] leading-relaxed text-white/54">
+                <p>Prompt: {receipt.query ?? "Unavailable"}</p>
+                <p>Consensus: {receipt.consensus.decision}</p>
+                <p>Regime: {receipt.regime}</p>
+                <p>Chain: {receipt.chain_id}</p>
+                <p>Receipt ID: {receipt.id ?? "Unsaved"}</p>
+                <p>Storage Root: {receipt.storage_root_hash ?? "Not uploaded yet"}</p>
+                <p>Proof Ref: {receipt.proof_ref ?? "None"}</p>
+              </div>
+            </details>
+          </Section>
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>
   );
 }

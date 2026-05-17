@@ -1,66 +1,90 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { AgentNodeData, NodeState } from "@/store/research";
 import clsx from "clsx";
 
 type AgentNodeProps = NodeProps & { data: AgentNodeData };
 
-// ── State colours ─────────────────────────────────────────────────────────────
-
-const STATE_STYLES: Record<
+const STATE_CONFIG: Record<
   NodeState,
-  { border: string; glow: string; badge: string; badgeText: string }
+  {
+    border: string;
+    glow: string;
+    headerBg: string;
+    dot: string;
+    dotPulse: boolean;
+    badge: string;
+    badgeText: string;
+    processLabel: string;
+    handleColor: string;
+  }
 > = {
   idle: {
-    border: "border-white/10",
+    border: "border-white/[0.08]",
     glow: "",
-    badge: "bg-white/5 text-white/30",
-    badgeText: "Idle",
+    headerBg: "rgba(255,255,255,0.025)",
+    dot: "#4b5563",
+    dotPulse: false,
+    badge: "bg-white/[0.06] text-white/40 border border-white/[0.08]",
+    badgeText: "Standby",
+    processLabel: "Scope",
+    handleColor: "#374151",
   },
   thinking: {
-    border: "border-purple-500/60",
-    glow: "shadow-[0_0_16px_rgba(168,85,247,0.35)]",
-    badge: "bg-purple-500/20 text-purple-300",
+    border: "border-violet-500/50",
+    glow: "shadow-[0_0_32px_rgba(139,92,246,0.28),0_0_8px_rgba(139,92,246,0.12)]",
+    headerBg: "rgba(139,92,246,0.08)",
+    dot: "#a78bfa",
+    dotPulse: true,
+    badge: "bg-violet-500/20 text-violet-200 border border-violet-500/30",
     badgeText: "Thinking",
+    processLabel: "Running",
+    handleColor: "#7c3aed",
   },
   done: {
-    border: "border-emerald-500/60",
-    glow: "shadow-[0_0_16px_rgba(34,197,94,0.25)]",
-    badge: "bg-emerald-500/20 text-emerald-300",
+    border: "border-emerald-500/45",
+    glow: "shadow-[0_0_28px_rgba(52,211,153,0.22),0_0_6px_rgba(52,211,153,0.10)]",
+    headerBg: "rgba(52,211,153,0.07)",
+    dot: "#34d399",
+    dotPulse: false,
+    badge: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
     badgeText: "Done",
+    processLabel: "Completed",
+    handleColor: "#059669",
   },
   vetoed: {
-    border: "border-red-500/60",
-    glow: "shadow-[0_0_16px_rgba(239,68,68,0.35)]",
-    badge: "bg-red-500/20 text-red-300",
-    badgeText: "Vetoed",
+    border: "border-rose-500/45",
+    glow: "shadow-[0_0_28px_rgba(248,113,113,0.22),0_0_6px_rgba(248,113,113,0.10)]",
+    headerBg: "rgba(248,113,113,0.07)",
+    dot: "#f87171",
+    dotPulse: false,
+    badge: "bg-rose-500/20 text-rose-300 border border-rose-500/30",
+    badgeText: "Blocked",
+    processLabel: "Halted",
+    handleColor: "#be123c",
   },
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export const AgentNode = memo(function AgentNode({
-  data,
-}: AgentNodeProps) {
-  const [expanded, setExpanded] = useState(false);
-  const styles = STATE_STYLES[data.state];
-  const hasSubTasks = data.subTasks.length > 0;
+export const AgentNode = memo(function AgentNode({ data }: AgentNodeProps) {
+  const cfg = STATE_CONFIG[data.state];
   const doneSubTasks = data.subTasks.filter((t) => t.done).length;
+  const isIdle = data.state === "idle";
+  const isThinking = data.state === "thinking";
 
   return (
     <div
       className={clsx(
-        "relative rounded-2xl border px-3 py-2.5 min-w-[150px] max-w-[190px] text-left select-none transition-all duration-300",
-        "cursor-default",
-        styles.border,
-        styles.glow,
-        data.state === "idle" ? "opacity-60" : "opacity-100",
+        "relative w-[260px] rounded-2xl border transition-all duration-300",
+        cfg.border,
+        cfg.glow,
+        isIdle && "opacity-70",
       )}
       style={{
         background:
-          "linear-gradient(135deg, rgba(13,13,26,0.97) 0%, rgba(20,10,40,0.97) 100%)",
+          "linear-gradient(160deg, rgba(16,16,26,0.97) 0%, rgba(10,10,20,0.99) 100%)",
+        backdropFilter: "blur(16px)",
       }}
     >
       {/* Handles */}
@@ -68,123 +92,141 @@ export const AgentNode = memo(function AgentNode({
         type="target"
         position={Position.Left}
         style={{
-          background: "#6b7280",
-          border: "none",
-          width: 8,
-          height: 8,
+          background: cfg.handleColor,
+          border: "2px solid rgba(255,255,255,0.12)",
+          width: 9,
+          height: 9,
         }}
       />
       <Handle
         type="source"
         position={Position.Right}
         style={{
-          background: "#6b7280",
-          border: "none",
-          width: 8,
-          height: 8,
+          background: cfg.handleColor,
+          border: "2px solid rgba(255,255,255,0.12)",
+          width: 9,
+          height: 9,
         }}
       />
 
-      {/* Header */}
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="text-base leading-none">{data.icon}</span>
-        <span className="text-[11px] font-semibold text-white/90 leading-none truncate flex-1">
-          {data.label}
-        </span>
+      {/* Header strip */}
+      <div
+        className="flex items-center justify-between rounded-t-2xl px-3.5 py-2.5"
+        style={{ background: cfg.headerBg, borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={clsx("h-2 w-2 shrink-0 rounded-full", cfg.dotPulse && "animate-pulse")}
+            style={{ background: cfg.dot }}
+          />
+          <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-white/45 truncate">
+            {data.roleLabel}
+          </p>
+        </div>
         <span
           className={clsx(
-            "shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full",
-            styles.badge,
+            "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide",
+            cfg.badge,
           )}
         >
-          {styles.badgeText}
+          {cfg.badgeText}
         </span>
       </div>
 
-      {/* Thinking pulse bar */}
-      {data.state === "thinking" && (
-        <div className="h-0.5 w-full rounded-full overflow-hidden mb-1.5 bg-white/5">
-          <div
-            className="h-full rounded-full bg-purple-400"
-            style={{ animation: "thinking-slide 1.5s ease-in-out infinite" }}
-          />
-        </div>
-      )}
+      {/* Body */}
+      <div className="px-3.5 pb-3.5 pt-3">
+        <h3 className="text-[15px] font-semibold leading-tight text-white/90">
+          {data.label}
+        </h3>
 
-      {/* Confidence bar (done state) */}
-      {data.state === "done" && data.confidence !== null && (
-        <div className="mb-1.5">
-          <div className="flex justify-between items-center mb-0.5">
-            <span className="text-[9px] text-white/30">Confidence</span>
-            <span className="text-[9px] text-emerald-400 font-mono">
-              {Math.round(data.confidence * 100)}%
-            </span>
-          </div>
-          <div className="h-1 w-full rounded-full bg-white/5">
+        {/* Process row */}
+        <div className="mt-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <p className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-white/35">
+            {cfg.processLabel}
+          </p>
+          <p className="mt-1 text-[11.5px] leading-snug text-white/72">
+            {data.processLabel}
+          </p>
+        </div>
+
+        {/* Thinking progress bar */}
+        {isThinking && (
+          <div className="mt-2.5 h-[3px] overflow-hidden rounded-full" style={{ background: "rgba(139,92,246,0.18)" }}>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700"
-              style={{ width: `${Math.round(data.confidence * 100)}%` }}
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-sky-400"
+              style={{ animation: "agentnode-sweep 1.6s ease-in-out infinite" }}
             />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Last output */}
-      {data.lastOutput && (
-        <p className="text-[10px] text-white/45 leading-snug line-clamp-2 mb-1">
-          {data.lastOutput}
-        </p>
-      )}
-
-      {/* Sub-tasks for Signal Agent */}
-      {hasSubTasks && (
-        <div>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 text-[9px] text-white/30 hover:text-white/60 transition-colors"
+        {/* Latest output */}
+        <div
+          className="mt-2.5 rounded-xl px-3 py-2.5"
+          style={{ background: "rgba(255,255,255,0.026)", border: "1px solid rgba(255,255,255,0.05)" }}
+        >
+          <p className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-white/35">
+            {isIdle ? "Awaiting" : "Output"}
+          </p>
+          <p
+            className={clsx(
+              "mt-1 text-[11px] leading-snug line-clamp-3",
+              isIdle ? "text-white/35 italic" : "text-white/65",
+            )}
           >
-            <span>
-              {doneSubTasks}/{data.subTasks.length} sub-tasks
-            </span>
-            <span>{expanded ? "▲" : "▼"}</span>
-          </button>
-          {expanded && (
-            <div className="mt-1 space-y-0.5">
-              {data.subTasks.map((t) => (
-                <div key={t.label} className="flex items-center gap-1">
-                  <span
-                    className={clsx(
-                      "w-1.5 h-1.5 rounded-full shrink-0",
-                      t.done ? "bg-emerald-400" : "bg-white/15",
-                    )}
-                  />
-                  <span
-                    className={clsx(
-                      "text-[9px]",
-                      t.done ? "text-white/70" : "text-white/25",
-                    )}
-                  >
-                    {t.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+            {data.lastOutput || "Waiting for handoff from upstream agents."}
+          </p>
         </div>
-      )}
 
-      {/* Vetoed X */}
-      {data.state === "vetoed" && (
-        <div className="absolute inset-0 rounded-2xl flex items-center justify-center pointer-events-none">
-          <div className="text-red-500/20 text-5xl font-bold">✕</div>
-        </div>
-      )}
+        {/* Confidence + subtask count */}
+        {(data.confidence !== null || data.subTasks.length > 0) && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {data.confidence !== null && (
+              <span
+                className="rounded-full px-2.5 py-1 text-[9px] font-medium text-white/65"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                {Math.round(data.confidence * 100)}% confidence
+              </span>
+            )}
+            {data.subTasks.length > 0 && (
+              <span
+                className="rounded-full px-2.5 py-1 text-[9px] font-medium text-white/65"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                {doneSubTasks}/{data.subTasks.length} modules
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Subtask chips */}
+        {data.subTasks.length > 0 && (
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {data.subTasks.map((task) => (
+              <div
+                key={task.label}
+                className={clsx(
+                  "rounded-lg px-2 py-1.5 text-[9px] text-center font-medium transition-all duration-200",
+                  task.done ? "text-emerald-300" : "text-white/38",
+                )}
+                style={{
+                  background: task.done ? "rgba(16,185,129,0.14)" : "rgba(255,255,255,0.03)",
+                  border: task.done ? "1px solid rgba(16,185,129,0.24)" : "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                {task.done && <span className="mr-1 opacity-80">✓</span>}
+                {task.label}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <style>{`
-        @keyframes thinking-slide {
-          0%   { width: 0%; margin-left: 0%; }
-          50%  { width: 60%; margin-left: 20%; }
-          100% { width: 0%; margin-left: 100%; }
+        @keyframes agentnode-sweep {
+          0%   { width: 0%;   margin-left: 0%;    }
+          50%  { width: 55%;  margin-left: 22%;   }
+          100% { width: 0%;   margin-left: 100%;  }
         }
       `}</style>
     </div>

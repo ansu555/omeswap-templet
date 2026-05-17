@@ -34,17 +34,18 @@ import type {
 import { createSupabaseAdminClient } from '@/lib/supabase/server'
 
 import { runDataAgent } from '@/lib/ats/agents/data-agent'
-import { runRegimeAgent } from '@/lib/ats/agents/regime-agent'
-import { runSignalAgent } from '@/lib/ats/agents/signal-agent'
-import { runGraphAgent } from '@/lib/ats/agents/graph-agent'
-import { runRiskAgent } from '@/lib/ats/agents/risk-agent'
-import { runExecutionAgent } from '@/lib/ats/agents/execution-agent'
+import { runRegimeAgent, type RegimeAgentResult } from '@/lib/ats/agents/regime-agent'
+import { runSignalAgent, type SignalAgentResult } from '@/lib/ats/agents/signal-agent'
+import { runGraphAgent, type GraphAgentResult } from '@/lib/ats/agents/graph-agent'
+import { runRiskAgent, type RiskAgentResult } from '@/lib/ats/agents/risk-agent'
+import { runExecutionAgent, type ExecutionAgentResult } from '@/lib/ats/agents/execution-agent'
 import {
   runRegimeAgentRemote,
   runSignalAgentRemote,
   runGraphAgentRemote,
   runRiskAgentRemote,
 } from '@/lib/ats/remote-agents'
+import { buildFallbackResearchBrief, buildResearchBrief } from '@/lib/ats/research-brief'
 import {
   getAtsTransport,
   getAxlConfig,
@@ -155,6 +156,7 @@ async function persistReceipt(receipt: DecisionReceipt): Promise<string | null> 
         user_wallet:       receipt.user_wallet.toLowerCase(),
         ticker:            receipt.ticker,
         trigger_type:      receipt.trigger_type,
+        query:             receipt.query ?? null,
         chain_id:          receipt.chain_id,
         tx_hash:           receipt.tx_hash ?? null,
         storage_root_hash: receipt.storage_root_hash ?? null,
@@ -163,6 +165,8 @@ async function persistReceipt(receipt: DecisionReceipt): Promise<string | null> 
         causal_chain:      receipt.causal_chain as unknown as Record<string, unknown>,
         risk_sizing:       receipt.risk_sizing as unknown as Record<string, unknown>,
         consensus:         receipt.consensus as unknown as Record<string, unknown>,
+        research_brief:    receipt.research_brief as unknown as Record<string, unknown>,
+        proof_ref:         receipt.proof_ref ?? null,
       })
       .select('id')
       .single()
@@ -244,10 +248,20 @@ export async function runOrchestrator(
   let riskSizing: RiskSizing = { kelly_fraction: 0, size_usd: 0, max_loss_usd: 0, veto_triggered: true, veto_reason: 'Initialising' }
   let consensus: Consensus = { decision: 'HOLD', confidence: 0.5, rationale: '', approved_by: [], vetoed_by: [] }
   let txHash: string | null = null
+  let latestError: string | null = null
+  let dataBundle: Awaited<ReturnType<typeof runDataAgent>>['data'] | null = null
+  let newsBundle: Awaited<ReturnType<typeof runDataAgent>>['news'] | null = null
+  let regimeResult: RegimeAgentResult | null = null
+  let signalResult: SignalAgentResult | null = null
+  let graphResult: GraphAgentResult | null = null
+  let riskResult: RiskAgentResult | null = null
+  let executionResult: ExecutionAgentResult | null = null
 
   try {
     // ── Phase 1: Data Agent ───────────────────────────────────────────────
     const { data, news } = await runDataAgent(ticker, emit, run_id)
+    dataBundle = data
+    newsBundle = news
 
     if (data.quality_score === 0) {
       throw new Error(`No price data found for ticker "${ticker}". Check the ticker symbol.`)
@@ -259,11 +273,12 @@ export async function runOrchestrator(
     const graphFn  = activeTransport === 'axl' ? runGraphAgentRemote  : runGraphAgent
     const riskFn   = activeTransport === 'axl' ? runRiskAgentRemote   : runRiskAgent
 
-    const [regimeResult, signalResult, graphResult] = await Promise.all([
+    const phase2Results = await Promise.all([
       regimeFn(data, news, userWallet, emit, run_id),
       signalFn(data, news, regime, userWallet, emit, run_id),  // uses sideways as initial regime
       graphFn(data, regime, userWallet, emit, run_id),
     ])
+    ;[regimeResult, signalResult, graphResult] = phase2Results
 
     regime = regimeResult.regime
     causal = signalResult.causal
@@ -276,7 +291,7 @@ export async function runOrchestrator(
     ]
 
     // ── Phase 3: Risk Agent ───────────────────────────────────────────────
-    const riskResult = await riskFn(
+    riskResult = await riskFn(
       data,
       phase2Votes,
       signalResult.technical,
@@ -321,6 +336,7 @@ export async function runOrchestrator(
         emit,
         run_id,
       )
+      executionResult = execResult
       txHash = execResult.tx_hash
     } else if (mode === 'solo' || consensus.decision === 'HOLD' || consensus.decision === 'VETO') {
       emit({
@@ -346,6 +362,7 @@ export async function runOrchestrator(
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
+    latestError = errMsg
     emit({
       type: 'run.error',
       run_id,
@@ -379,6 +396,29 @@ export async function runOrchestrator(
     causal_chain: causal,
     risk_sizing: riskSizing,
     consensus,
+    research_brief:
+      dataBundle && newsBundle && regimeResult && signalResult && graphResult && riskResult
+        ? buildResearchBrief({
+            query,
+            mode,
+            chainId,
+            data: dataBundle,
+            news: newsBundle,
+            regimeResult,
+            signalResult,
+            graphResult,
+            riskResult,
+            consensus,
+            executionResult,
+          })
+        : buildFallbackResearchBrief({
+            ticker: ticker.toUpperCase(),
+            chainId,
+            mode,
+            consensus,
+            sizing: riskSizing,
+            error: latestError ?? 'The ATS run did not complete with a full evidence bundle.',
+          }),
     proof_ref: null,
   }
 
