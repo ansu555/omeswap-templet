@@ -58,15 +58,86 @@ const ZERO_G_NETWORKS: Record<ZeroGNetwork, ZeroGNetworkConfig> = {
   },
 };
 
-const NETWORK_ENV = (process.env.NEXT_PUBLIC_0G_NETWORK ?? "mainnet").toLowerCase();
-export const ZEROG_NETWORK: ZeroGNetwork = NETWORK_ENV === "testnet" ? "testnet" : "mainnet";
+const NETWORK_ALIASES: Record<string, ZeroGNetwork> = {
+  mainnet: "mainnet",
+  testnet: "testnet",
+  galileo: "testnet",
+  newton: "testnet",
+};
+
+function resolveZeroGNetwork(raw: string | undefined): ZeroGNetwork {
+  const normalized = raw?.trim().toLowerCase();
+  if (!normalized) return "mainnet";
+
+  const resolved = NETWORK_ALIASES[normalized];
+  if (resolved) return resolved;
+
+  throw new Error(
+    `Invalid NEXT_PUBLIC_0G_NETWORK="${raw}". Use one of: mainnet, testnet, galileo, newton.`,
+  );
+}
+
+function getOfficialTransportNetwork(url: string): ZeroGNetwork | null {
+  const normalized = url.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (
+    normalized.includes("evmrpc-testnet.0g.ai") ||
+    normalized.includes("evmws-testnet.0g.ai")
+  ) {
+    return "testnet";
+  }
+
+  if (
+    normalized.includes("evmrpc.0g.ai") ||
+    normalized.includes("evmws.0g.ai")
+  ) {
+    return "mainnet";
+  }
+
+  return null;
+}
+
+function resolveTransportEndpoint(
+  envName: string,
+  rawValue: string | undefined,
+  expectedNetwork: ZeroGNetwork,
+  fallback: string,
+): string {
+  const candidate = rawValue?.trim();
+  if (!candidate) return fallback;
+
+  const detectedNetwork = getOfficialTransportNetwork(candidate);
+  if (detectedNetwork && detectedNetwork !== expectedNetwork) {
+    console.warn(
+      `[0G] Ignoring ${envName}=${candidate} because it targets ${detectedNetwork} while NEXT_PUBLIC_0G_NETWORK=${expectedNetwork}. Falling back to ${fallback}.`,
+    );
+    return fallback;
+  }
+
+  return candidate;
+}
+
+export const ZEROG_NETWORK: ZeroGNetwork = resolveZeroGNetwork(
+  process.env.NEXT_PUBLIC_0G_NETWORK,
+);
 const ACTIVE = ZERO_G_NETWORKS[ZEROG_NETWORK];
 
 // ── Chain definition ─────────────────────────────────────────────────────────
 
 export const ZEROG_CHAIN_ID = ACTIVE.chainId;
-export const ZEROG_RPC = process.env.NEXT_PUBLIC_0G_RPC ?? ACTIVE.rpcUrl;
-export const ZEROG_WSS = process.env.NEXT_PUBLIC_0G_WSS ?? ACTIVE.wssUrl;
+export const ZEROG_RPC = resolveTransportEndpoint(
+  "NEXT_PUBLIC_0G_RPC",
+  process.env.NEXT_PUBLIC_0G_RPC,
+  ZEROG_NETWORK,
+  ACTIVE.rpcUrl,
+);
+export const ZEROG_WSS = resolveTransportEndpoint(
+  "NEXT_PUBLIC_0G_WSS",
+  process.env.NEXT_PUBLIC_0G_WSS,
+  ZEROG_NETWORK,
+  ACTIVE.wssUrl,
+);
 
 export const zeroGChain = defineChain({
   id: ZEROG_CHAIN_ID,

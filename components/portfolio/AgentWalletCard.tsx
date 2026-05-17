@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { getChainConfig, getExplorerLink } from "@/lib/chain-registry";
 import { useSendTransaction, useAccount, useConfig } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { parseEther, isAddress } from "viem";
@@ -38,10 +39,24 @@ type StatusLabel = "not-initialized" | "needs-funding" | "initialized" | "ready"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const EXPLORER_BASE = "https://chainscan.0g.ai";
-
 function truncate(addr: string) {
   return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+}
+
+function getResolvedChain(chainId: number) {
+  try {
+    return getChainConfig(chainId).chain;
+  } catch {
+    return null;
+  }
+}
+
+function getExplorerHref(address: string, chainId: number) {
+  try {
+    return getExplorerLink(chainId, "address", address);
+  } catch {
+    return null;
+  }
 }
 
 function getStatus(data: AgentWalletData): StatusLabel {
@@ -80,10 +95,17 @@ interface SendDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agentAddress: string;
+  nativeSymbol: string;
   onSuccess?: () => void;
 }
 
-function SendToAgentDialog({ open, onOpenChange, agentAddress, onSuccess }: SendDialogProps) {
+function SendToAgentDialog({
+  open,
+  onOpenChange,
+  agentAddress,
+  nativeSymbol,
+  onSuccess,
+}: SendDialogProps) {
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "confirming" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -141,7 +163,7 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress, onSuccess }: Send
         <DialogHeader>
           <DialogTitle className="text-foreground">Fund Agent Wallet</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Send native A0GI from your connected wallet to your agent burner
+            Send native {nativeSymbol} from your connected wallet to your agent burner
             EOA.
           </DialogDescription>
         </DialogHeader>
@@ -156,7 +178,7 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress, onSuccess }: Send
 
           <div className="space-y-1.5">
             <label className="text-sm text-muted-foreground">
-              Amount (A0GI)
+              Amount ({nativeSymbol})
             </label>
             <Input
               type="number"
@@ -186,7 +208,7 @@ function SendToAgentDialog({ open, onOpenChange, agentAddress, onSuccess }: Send
               ? "Sent!"
               : status === "confirming"
               ? "Confirming…"
-              : "Send A0GI"}
+              : `Send ${nativeSymbol}`}
           </Button>
         </div>
       </DialogContent>
@@ -206,6 +228,10 @@ export function AgentWalletCard() {
   const [copied, setCopied] = useState(false);
   const [fundOpen, setFundOpen] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
+  const resolvedChain = data ? getResolvedChain(data.chainId) : null;
+  const nativeSymbol = resolvedChain?.nativeCurrency.symbol ?? "0G";
+  const explorerHref =
+    data?.address ? getExplorerHref(data.address, data.chainId) : null;
 
   // Poll balance a few times after funding — chain takes a few seconds to reflect
   const pollAfterFund = useCallback(async () => {
@@ -281,7 +307,7 @@ export function AgentWalletCard() {
       });
       const json = await res.json();
       if (json.native?.txHash) {
-        setSweepResult(`Swept ${json.native.amount} A0GI — tx: ${json.native.txHash.slice(0, 10)}…`);
+        setSweepResult(`Swept ${json.native.amount} ${nativeSymbol} — tx: ${json.native.txHash.slice(0, 10)}…`);
       } else if (json.error) {
         setSweepResult(`Error: ${json.error}`);
       } else {
@@ -366,10 +392,12 @@ export function AgentWalletCard() {
                 <span className="text-2xl font-bold text-foreground">
                   {parseFloat(data.balance ?? "0").toFixed(4)}
                 </span>
-                <span className="text-muted-foreground text-sm">A0GI</span>
+                <span className="text-muted-foreground text-sm">{nativeSymbol}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Chain ID: {data.chainId}
+                {resolvedChain
+                  ? `${resolvedChain.name} · Chain ID: ${data.chainId}`
+                  : `Chain ID: ${data.chainId}`}
               </p>
             </>
           ) : (
@@ -393,15 +421,17 @@ export function AgentWalletCard() {
                 <Copy className="w-3.5 h-3.5 shrink-0" />
               )}
             </button>
-            <a
-              href={`${EXPLORER_BASE}/address/${data.address}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 glass-card rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-              title="View on explorer"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            {explorerHref && (
+              <a
+                href={explorerHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 glass-card rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                title="View on explorer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
         )}
 
@@ -461,6 +491,7 @@ export function AgentWalletCard() {
           onOpenChange={setFundOpen}
           onSuccess={pollAfterFund}
           agentAddress={data.address}
+          nativeSymbol={nativeSymbol}
         />
       )}
     </>
