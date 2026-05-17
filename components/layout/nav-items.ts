@@ -8,6 +8,7 @@ import {
   Receipt,
   Store,
   Wallet,
+  BookOpen,
 } from "lucide-react";
 
 export type AppNavItem = {

@@ -43,6 +43,8 @@ export interface AgentWallet {
   address: string
   /** Live viem LocalAccount ready for signing */
   account: PrivateKeyAccount
+  /** Raw private key — server-only, never send to the client */
+  privateKey: Hex
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,7 +88,7 @@ export async function getOrCreateAgentWallet(
     }) as Hex
 
     const account = privateKeyToAccount(privateKey)
-    return { address: normalise(account.address), account }
+    return { address: normalise(account.address), account, privateKey }
   }
 
   // ── Create a new burner wallet ───────────────────────────
@@ -114,7 +116,7 @@ export async function getOrCreateAgentWallet(
     throw new Error(`Failed to persist agent wallet: ${upsertErr.message}`)
   }
 
-  return { address: agentAddress, account }
+  return { address: agentAddress, account, privateKey }
 }
 
 /**
